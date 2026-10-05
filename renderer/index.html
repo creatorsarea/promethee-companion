@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<title>Promethee Card Studio</title>
+<style>
+:root{--panel:#141110;--line:#2a2522;--cream:#f4eadf;--dim:#9a8f86;--orange:#e1633a;}
+*{box-sizing:border-box;}
+body{margin:0;background:#070605;color:var(--cream);font-family:'DMSans',system-ui,sans-serif;display:flex;gap:22px;padding:22px;height:100vh;overflow:hidden;}
+.panel{width:360px;flex:0 0 360px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;overflow:auto;}
+h1{font-size:16px;margin:0 0 2px;letter-spacing:.5px;}
+.v{font-size:12px;color:var(--dim);margin:0 0 14px;font-family:'DMMono',monospace;}
+label{display:block;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin:14px 0 5px;font-family:'DMMono',monospace;}
+input,select,textarea{width:100%;background:#0c0a09;border:1px solid var(--line);border-radius:9px;color:var(--cream);padding:9px 11px;font-size:13.5px;font-family:'DMSans',sans-serif;}
+textarea{resize:vertical;min-height:70px;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);}
+.row{display:flex;gap:10px;}.row>div{flex:1;}
+.sess{background:#0c0a09;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:12px;font-family:'DMMono',monospace;color:var(--dim);line-height:1.7;}
+.sess b{color:var(--cream);font-weight:400;}
+.chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--dim);}
+.chk input{width:auto;}
+button{margin-top:16px;width:100%;background:var(--orange);color:#1a0d08;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DMSans',sans-serif;}
+button:disabled{opacity:.5;cursor:default;}
+.status{margin-top:12px;font-size:12px;color:var(--dim);font-family:'DMMono',monospace;line-height:1.6;white-space:pre-wrap;}
+.stage{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.cw{width:100%;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;}
+canvas{width:100%;height:auto;display:block;}
+a{color:var(--orange);word-break:break-all;}
+</style>
+</head>
+<body>
+<div class="panel">
+  <h1>Card Studio</h1>
+  <p class="v" id="appv">Chargement…</p>
+
+  <label>Session</label>
+  <select id="sessionSel"></select>
+  <div class="sess" id="sessbox" style="margin-top:10px;">…</div>
+  <div class="status" id="poststate" style="margin-top:6px;"></div>
+
+  <label>Pseudo</label>
+  <input id="handle" value="@zaros"/>
+
+  <div class="row">
+    <div>
+      <label>Tier</label>
+      <select id="tier"></select>
+    </div>
+    <div><label>Rang</label><input id="rank" type="number" value="1"/></div>
+  </div>
+  <div class="row">
+    <div><label>Places gagnees</label><input id="places" type="number" value="0"/></div>
+    <div><label>FR gagnes</label><input id="fr" type="number" value="0"/></div>
+  </div>
+
+  <label>Texte du post</label>
+  <textarea id="body" placeholder="Ecris le texte de ton post de session…"></textarea>
+
+  <div class="chk"><input type="checkbox" id="hidden" checked/><label for="hidden" style="margin:0;text-transform:none;letter-spacing:0;font-family:'DMSans';font-size:12.5px;">Publier en cache (test, invisible pour les autres)</label></div>
+
+  <button id="publish" disabled>Publier la session</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="stage">
+  <div class="cw"><canvas id="cv" width="1920" height="1024"></canvas></div>
+  <div class="status" id="hint">Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.</div>
+</div>
+
+<script src="card.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>

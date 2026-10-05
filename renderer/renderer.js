@@ -1,0 +1,119 @@
+'use strict';
+// UI orchestration: session picker, live preview, publish/edit.
+const FPS = 12, T = 4.0, QUALITY = 0.95;
+
+const $ = id => document.getElementById(id);
+const cv = $('cv'), ctx = cv.getContext('2d');
+const makeCanvas = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return o; };
+
+let tierImg = null;
+let sessions = [], posts = {}, profile = { streak: 0 };
+let current = null;        // selected session object
+let rafId = null, t0 = performance.now();
+
+function currentData() {
+  return {
+    user: $('handle').value, tier: $('tier').value, tierName: $('tier').selectedOptions[0].text,
+    rank: $('rank').value, places: $('places').value, fr: $('fr').value,
+    durMin: current.durMin, xp: current.xp, streak: $('streak') ? profile.streak : profile.streak,
+    session: current.session, displayName: profile.displayName,
+    streakVal: profile.streak,
+  };
+}
+// card.js expects data.streak as a number; map it
+function cardData() { const d = currentData(); d.streak = profile.streak; return d; }
+
+function loop() {
+  const t = ((performance.now() - t0) / 1000) % T;
+  PrometheeCard.drawFrame(ctx, cardData(), { tierImg }, makeCanvas, t, T);
+  rafId = requestAnimationFrame(loop);
+}
+function loadImage(url) { return new Promise(res => { if (!url) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
+async function setTier(tier) { tierImg = await loadImage(await window.studio.tierImage(tier)); }
+
+function applySession(idx) {
+  current = sessions[idx];
+  $('sessbox').innerHTML =
+    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${profile.streak} J</b>\n${current.session}` +
+    (current.task ? `\ntache  <b>${current.task}</b>` : '');
+  $('rank').value = current.rank;
+  const ex = posts[current.sessionId];
+  const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
+  if (ex) {
+    $('body').value = ex.body || '';
+    btn.textContent = 'Mettre a jour la session';
+    hid.checked = ex.hidden; hid.disabled = true;
+    ps.innerHTML = `Deja publie (${ex.hidden ? 'cache' : 'public'}). Le bouton met a jour image + texte.`;
+  } else {
+    $('body').value = '';
+    btn.textContent = 'Publier la session';
+    hid.disabled = false;
+    ps.textContent = 'Pas encore publie. Le bouton cree le post.';
+  }
+}
+
+async function init() {
+  const info = await window.studio.init();
+  if (!info || !info.ok) { $('status').textContent = 'Erreur init : ' + (info && info.error); return; }
+  $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token indisponible (autocomplete off)' : '');
+  sessions = info.sessions; posts = info.posts || {}; profile = info.profile;
+
+  for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
+    const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff);
+  }
+  await document.fonts.ready;
+
+  const ssel = $('sessionSel'); ssel.innerHTML = '';
+  sessions.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (posts[s.sessionId] ? '● ' : '○ ') + s.pickLabel; ssel.appendChild(o); });
+  ssel.value = '0';
+  ssel.addEventListener('change', () => applySession(parseInt(ssel.value, 10)));
+
+  $('handle').value = info.handle;
+  const sel = $('tier'); sel.innerHTML = '';
+  for (const tkey of (info.availableTiers.length ? info.availableTiers : ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'])) {
+    const o = document.createElement('option'); o.value = tkey; o.textContent = tkey.charAt(0).toUpperCase() + tkey.slice(1);
+    if (tkey === info.defaultTier) o.selected = true; sel.appendChild(o);
+  }
+  await setTier(sel.value);
+  sel.addEventListener('change', async () => { await setTier(sel.value); });
+
+  applySession(0);
+  $('publish').disabled = false;
+  loop();
+}
+
+async function publish() {
+  const btn = $('publish'); btn.disabled = true;
+  const st = $('status'); st.textContent = 'Generation des frames…';
+  if (rafId) cancelAnimationFrame(rafId), rafId = null;
+
+  const d = cardData();
+  PrometheeCard.resetLayout();
+  const N = Math.round(FPS * T), frames = [];
+  for (let i = 0; i < N; i++) {
+    PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T);
+    frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
+    if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
+  }
+  st.textContent = 'Assemblage et publication…';
+
+  const res = await window.studio.publish({
+    sessionId: current.sessionId, frames, delayMs: Math.round(1000 / FPS),
+    body: $('body').value, tier: d.tier, handle: d.user, hidden: $('hidden').checked,
+  });
+
+  if (res.ok) {
+    posts[current.sessionId] = { eventId: res.eventId, body: $('body').value, hidden: $('hidden').checked };
+    const verb = res.mode === 'edit' ? 'Mis a jour' : (res.hidden ? 'Publie (cache)' : 'Publie (public)');
+    st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} Mo\nservi: ${res.servedType}, anime: ${res.servedAnimated ? 'oui' : 'NON'}, identique: ${res.servedIdentical ? 'oui' : 'NON'}\nevent: ${res.eventId || '(n/a)'}`;
+    const a = document.createElement('a'); a.href = res.url; a.textContent = res.url; a.target = '_blank';
+    st.appendChild(document.createElement('br')); st.appendChild(a);
+    applySession(parseInt($('sessionSel').value, 10)); // refresh labels/state
+  } else {
+    st.textContent = 'Erreur : ' + res.error;
+  }
+  t0 = performance.now(); loop(); btn.disabled = false;
+}
+
+$('publish').addEventListener('click', publish);
+init().catch(e => { $('status').textContent = 'Erreur : ' + e.message; });
