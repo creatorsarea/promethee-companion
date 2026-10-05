@@ -10,7 +10,7 @@
   // Tint used for the soft glow behind the emblem, per tier.
   const GLOW = {
     bronze: '170,100,55', silver: '150,160,172', gold: '210,170,70',
-    platinum: '150,196,198', diamond: '104,150,190', legend: '220,90,72',
+    platinum: '150,196,198', diamond: '150,170,200', legend: '220,90,72',
     champion: '150,196,198'
   };
 
@@ -60,25 +60,38 @@
     line([[ex - 0.62 * R, ey - 0.44 * R], [ex - 0.12 * R, ey - 0.14 * R]], 'rgba(255,255,255,.7)', R * 0.036);
   }
 
-  // Build an emblem layer (tier image or fallback gem) with an optional glint sweep.
-  function emblemLayer(makeCanvas, tierImg, size, tier, t, T) {
-    const off = makeCanvas(size, size);
-    const o = off.getContext('2d');
-    if (tierImg && tierImg.width) o.drawImage(tierImg, 0, 0, size, size);
-    else drawGem(o, size, tier);
-    const gs = (t - 1.6) / 0.8; // glint window
-    if (gs >= 0 && gs <= 1) {
-      o.save();
-      o.globalCompositeOperation = 'source-atop'; // keep within emblem pixels
-      const x0 = -size * 0.25 + gs * size * 1.5;
-      const grad = o.createLinearGradient(x0 - 90, 0, x0 + 90, size);
-      grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(0.5, 'rgba(255,255,255,0.45)');
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      o.fillStyle = grad; o.fillRect(0, 0, size, size);
-      o.restore();
+  // Prepare (and cache) the emblem: a tier PNG with its baked low-alpha halo rings
+  // stripped, plus a pre-blurred glow that follows the emblem silhouette (no disc).
+  let _emb = { key: null, size: 0 };
+  function prepareEmblem(makeCanvas, tierImg, size, tier) {
+    const key = tierImg || ('gem:' + tier);
+    if (_emb.key === key && _emb.size === size) return _emb;
+    const emb = makeCanvas(size, size);
+    const ec = emb.getContext('2d');
+    if (tierImg && tierImg.width) {
+      ec.drawImage(tierImg, 0, 0, size, size);
+      try {
+        const id = ec.getImageData(0, 0, size, size), d = id.data;
+        for (let i = 3; i < d.length; i += 4) {           // remap alpha: drop <95, ramp 95..165
+          const a = d[i];
+          d[i] = a <= 95 ? 0 : a >= 165 ? a : Math.round((a - 95) / 70 * 255);
+        }
+        ec.putImageData(id, 0, 0);
+      } catch (e) { /* cross-origin/tainted: fall back to the raw asset */ }
+    } else {
+      drawGem(ec, size, tier);
     }
-    return off;
+    const pad = Math.round(size * 0.5), gsz = size + pad * 2;
+    const sil = makeCanvas(gsz, gsz), sc = sil.getContext('2d');
+    sc.drawImage(emb, pad, pad, size, size);
+    sc.globalCompositeOperation = 'source-in';
+    sc.fillStyle = 'rgb(' + (GLOW[tier] || GLOW.diamond) + ')';
+    sc.fillRect(0, 0, gsz, gsz);
+    const glow = makeCanvas(gsz, gsz), gc = glow.getContext('2d');
+    gc.filter = 'blur(' + Math.round(size * 0.1) + 'px)';
+    gc.drawImage(sil, 0, 0);
+    _emb = { key, size, emblem: emb, glow, gsz };
+    return _emb;
   }
 
   let _heroY = null;
@@ -109,21 +122,21 @@
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
     const EM = 460, ex = 470, ey = 330;
-    const p = 0.5 + 0.5 * Math.sin(2 * Math.PI * t / T);
-    const dy = Math.round(6 * Math.sin(2 * Math.PI * t / T));
-    // glow pulse behind emblem
-    const gc = GLOW[data.tier] || GLOW.diamond;
-    const gg = ctx.createRadialGradient(ex, ey + dy, 0, ex, ey + dy, EM * 0.62);
-    gg.addColorStop(0, `rgba(${gc},${(0.16 + 0.20 * p).toFixed(3)})`);
-    gg.addColorStop(1, `rgba(${gc},0)`);
-    ctx.fillStyle = gg; ctx.fillRect(ex - EM, ey - EM, EM * 2, EM * 2);
-    // emblem
-    const layer = emblemLayer(makeCanvas, assets.tierImg, EM, data.tier, t, T);
-    ctx.drawImage(layer, ex - EM / 2, ey - EM / 2 + dy);
+    const prep = prepareEmblem(makeCanvas, assets.tierImg, EM, data.tier);
+    const pulse = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / T); // 0 -> 1 -> 0 over the loop
+    const scale = 1.0 + 0.07 * pulse;                        // grow, then return to normal
+    // shape-matching glow (follows the emblem, intensity pulses with the scale)
+    ctx.save();
+    ctx.globalAlpha = 0.14 + 0.16 * pulse;
+    ctx.drawImage(prep.glow, ex - prep.gsz / 2, ey - prep.gsz / 2);
+    ctx.restore();
+    // emblem, scaled about its center
+    const esz = EM * scale;
+    ctx.drawImage(prep.emblem, ex - esz / 2, ey - esz / 2, esz, esz);
 
     // header
     tx(ctx, 90, 78, 'PROMETHEE', '600 34px DMSans', CREAM, 'left', 'alphabetic', 5);
-    tx(ctx, W - 90, 78, data.user, '30px DMSans', DIM, 'right', 'alphabetic', 0);
+    tx(ctx, W - 90, 78, data.user, '500 30px DMSans', '#d8cfc6', 'right', 'alphabetic', 0);
     ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(90, 112); ctx.lineTo(W - 90, 112); ctx.stroke();
 
