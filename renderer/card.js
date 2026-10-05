@@ -146,9 +146,9 @@
       ctx.closePath(); ctx.fill();
       tx(ctx, sx + 48, py + 62, pl, fpl, ORANGE, 'left', 'alphabetic', 0);
     }
-    const frv = String(data.fr).trim();
-    if (frv !== '') {
-      const s = (parseInt(frv, 10) >= 0 ? '+' : '') + Math.round(parseInt(frv, 10) * k) + ' FR';
+    const frn = parseInt(data.fr, 10);
+    if (Number.isFinite(frn) && frn !== 0) {
+      const s = (frn >= 0 ? '+' : '') + Math.round(frn * k) + ' FR';
       tx(ctx, ex, py + 124, s, '600 44px DMSans', ORANGE_SOFT, 'center', 'alphabetic', 0);
     }
 
