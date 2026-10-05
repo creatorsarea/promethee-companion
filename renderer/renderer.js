@@ -31,10 +31,10 @@ async function setTier(tier) { tierImg = await loadImage(await window.studio.tie
 function applySession(idx) {
   current = sessions[idx];
   $('sessbox').innerHTML =
-    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak} J</b>\n${current.session}` +
+    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak ?? profile.streak ?? 0} J</b>\n${current.session}` +
     (current.task ? `\ntache  <b>${current.task}</b>` : '');
-  $('rank').value = current.rank;
-  $('streak').value = current.streak;
+  $('rank').value = current.rank ?? 1;
+  $('streak').value = current.streak ?? profile.streak ?? 0;
   const ex = posts[current.sessionId];
   const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
   if (ex) {
