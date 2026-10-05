@@ -11,17 +11,14 @@ let sessions = [], posts = {}, profile = { streak: 0 };
 let current = null;        // selected session object
 let rafId = null, t0 = performance.now();
 
-function currentData() {
+function cardData() {
   return {
     user: $('handle').value, tier: $('tier').value, tierName: $('tier').selectedOptions[0].text,
     rank: $('rank').value, places: $('places').value, fr: $('fr').value,
-    durMin: current.durMin, xp: current.xp, streak: $('streak') ? profile.streak : profile.streak,
-    session: current.session, displayName: profile.displayName,
-    streakVal: profile.streak,
+    streak: parseInt($('streak').value, 10) || 0,
+    durMin: current.durMin, xp: current.xp, session: current.session, displayName: profile.displayName,
   };
 }
-// card.js expects data.streak as a number; map it
-function cardData() { const d = currentData(); d.streak = profile.streak; return d; }
 
 function loop() {
   const t = ((performance.now() - t0) / 1000) % T;
@@ -34,9 +31,10 @@ async function setTier(tier) { tierImg = await loadImage(await window.studio.tie
 function applySession(idx) {
   current = sessions[idx];
   $('sessbox').innerHTML =
-    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${profile.streak} J</b>\n${current.session}` +
+    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak} J</b>\n${current.session}` +
     (current.task ? `\ntache  <b>${current.task}</b>` : '');
   $('rank').value = current.rank;
+  $('streak').value = current.streak;
   const ex = posts[current.sessionId];
   const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
   if (ex) {
