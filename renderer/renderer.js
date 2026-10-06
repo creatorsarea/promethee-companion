@@ -52,9 +52,22 @@ function renderLive(st) {
     ? st.topDurable.map(a => `<b>${esc(a.app)}</b> ${a.minutes}m`).join('<br>') : '';
   if (st.pending) {
     grace.className = 'grace show';
-    grace.innerHTML = `Tu es sur <b>${esc(st.pending.app)}</b> depuis ${st.pending.wallSecsOnApp}s. Reviens avant qu'il atteigne 20s, sinon <b>+1 switch</b> (~-${st.nextSwitchCost} pts focus).`;
+    const back = st.pending.returnTo ? ` sur <b>${esc(st.pending.returnTo)}</b>` : '';
+    grace.innerHTML = `Tu es sur <b>${esc(st.pending.app)}</b> depuis ${st.pending.wallSecsOnApp}s. Reviens${back} avant qu'il atteigne 20s, sinon <b>+1 switch</b> (~-${st.nextSwitchCost} pts focus).`;
   } else {
     grace.className = 'grace';
+  }
+
+  const tip = $('liveTip');
+  if (st.atCap && st.secondsToClearCap > 0) {
+    tip.className = 'live-tip show';
+    tip.innerHTML = `Tu es au plafond de malus (<b>35 pts</b>). Reste <b>${fmtElapsed(st.secondsToClearCap)}</b> de plus sans nouveau switch pour repasser dessous.`;
+  } else if (st.switchPenalty > 0) {
+    tip.className = 'live-tip show';
+    tip.innerHTML = `Malus actuel <b>-${st.switchPenalty} pts</b> (sous le plafond de 35). Garde tes detours < 20s pour qu'ils ne comptent pas.`;
+  } else {
+    tip.className = 'live-tip good show';
+    tip.innerHTML = `Focus <b>propre</b> pour l'instant, aucun switch penalisant. Continue comme ca.`;
   }
 }
 
