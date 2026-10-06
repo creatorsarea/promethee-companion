@@ -28,6 +28,43 @@ function loop() {
 function loadImage(url) { return new Promise(res => { if (!url) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
 async function setTier(tier) { tierImg = await loadImage(await window.studio.tierImage(tier)); }
 
+// --- live in-progress-session tracker (switch counter) ---
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function fmtElapsed(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`; }
+
+function renderLive(st) {
+  const card = $('live'), empty = $('liveEmpty'), stats = $('liveStats'), grace = $('liveGrace');
+  if (!st || !st.active) {
+    card.className = 'live off';
+    $('liveTitle').textContent = 'Session en cours';
+    $('liveMeta').textContent = (st && st.error) ? 'indisponible' : '';
+    empty.style.display = 'block'; stats.style.display = 'none'; grace.className = 'grace';
+    return;
+  }
+  card.className = 'live on' + (st.paused ? ' paused' : '');
+  $('liveTitle').textContent = st.task || 'Session en cours';
+  $('liveMeta').textContent = (st.paused ? 'en pause · ' : '') + fmtElapsed(st.trackedSeconds);
+  empty.style.display = 'none'; stats.style.display = 'flex';
+  const sw = $('liveSwitch'); sw.textContent = st.appSwitchCount; sw.className = 'n' + (st.appSwitchCount > 0 ? ' warn' : '');
+  $('liveFocus').textContent = st.focusFromSwitches;
+  $('livePenalty').textContent = '-' + st.switchPenalty;
+  $('liveApps').innerHTML = (st.topDurable && st.topDurable.length)
+    ? st.topDurable.map(a => `<b>${esc(a.app)}</b> ${a.minutes}m`).join('<br>') : '';
+  if (st.pending) {
+    grace.className = 'grace show';
+    grace.innerHTML = `Tu es sur <b>${esc(st.pending.app)}</b> depuis ${st.pending.wallSecsOnApp}s. Reviens avant qu'il atteigne 20s, sinon <b>+1 switch</b> (~-${st.nextSwitchCost} pts focus).`;
+  } else {
+    grace.className = 'grace';
+  }
+}
+
+async function pollLive() {
+  let st = null;
+  try { st = await window.studio.live(); } catch {}
+  renderLive(st);
+}
+function startLivePolling() { pollLive(); setInterval(pollLive, 4000); }
+
 function applySession(idx) {
   current = sessions[idx];
   $('sessbox').innerHTML =
@@ -78,6 +115,7 @@ async function init() {
   applySession(0);
   $('publish').disabled = false;
   loop();
+  startLivePolling();
 }
 
 async function publish() {

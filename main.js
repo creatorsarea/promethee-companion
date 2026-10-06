@@ -7,6 +7,7 @@ const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const { fetchMyPosts } = require('./lib/api');
 const { publishOrEdit } = require('./lib/publish');
+const { liveStatus } = require('./lib/live');
 
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 const CONFIG = path.join(app.getPath('userData'), 'config.json');
@@ -45,6 +46,11 @@ ipcMain.handle('studio:init', async () => {
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
   };
+});
+
+ipcMain.handle('studio:live', async () => {
+  try { return await liveStatus(resolve()); }
+  catch (err) { return { active: false, error: err.message }; }
 });
 
 ipcMain.handle('studio:tierImage', async (_e, tier) => {

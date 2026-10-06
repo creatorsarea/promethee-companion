@@ -26,6 +26,25 @@ button:disabled{opacity:.5;cursor:default;}
 .cw{width:100%;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;}
 canvas{width:100%;height:auto;display:block;}
 a{color:var(--orange);word-break:break-all;}
+/* live in-progress session tracker */
+.live{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+.live.off{opacity:.55;}
+.live-head{display:flex;align-items:center;gap:10px;font-family:'DMMono',monospace;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin-bottom:12px;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#3a3330;flex:0 0 auto;}
+.live.on .live-dot{background:#4ade80;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:lp 2s infinite;}
+.live.paused .live-dot{background:#e1a33a;animation:none;}
+@keyframes lp{0%{box-shadow:0 0 0 0 rgba(74,222,128,.5);}70%{box-shadow:0 0 0 6px rgba(74,222,128,0);}100%{box-shadow:0 0 0 0 rgba(74,222,128,0);}}
+.live-head .meta{margin-left:auto;color:var(--dim);letter-spacing:.5px;text-transform:none;font-size:11px;}
+.live-stats{display:flex;gap:26px;align-items:flex-end;}
+.stat .n{font-family:'PrometheeCondensed','DMSans',sans-serif;font-size:40px;line-height:.9;color:var(--cream);}
+.stat .n.warn{color:var(--orange);}
+.stat .k{font-family:'DMMono',monospace;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin-top:5px;}
+.live-apps{margin-left:auto;text-align:right;font-family:'DMMono',monospace;font-size:11px;color:var(--dim);line-height:1.6;max-width:46%;}
+.live-apps b{color:#c8bcb1;font-weight:400;}
+.grace{margin-top:12px;border-radius:9px;padding:9px 12px;font-size:12.5px;font-family:'DMSans',sans-serif;display:none;}
+.grace.show{display:block;background:rgba(225,99,58,.12);border:1px solid rgba(225,99,58,.4);color:#f0a98f;}
+.grace b{color:var(--orange);}
+.live-empty{font-size:12.5px;color:var(--dim);}
 </style>
 </head>
 <body>
@@ -62,6 +81,23 @@ a{color:var(--orange);word-break:break-all;}
 </div>
 
 <div class="stage">
+  <div class="live off" id="live">
+    <div class="live-head">
+      <span class="live-dot"></span>
+      <span id="liveTitle">Session en cours</span>
+      <span class="meta" id="liveMeta"></span>
+    </div>
+    <div id="liveBody">
+      <div class="live-empty" id="liveEmpty">Aucune session en cours. Lance une session dans Promethee, le compteur demarre tout seul.</div>
+      <div class="live-stats" id="liveStats" style="display:none;">
+        <div class="stat"><div class="n" id="liveSwitch">0</div><div class="k">switch penalisants</div></div>
+        <div class="stat"><div class="n" id="liveFocus">100</div><div class="k">focus (hors idle)</div></div>
+        <div class="stat"><div class="n" id="livePenalty">0</div><div class="k">malus switch (pts)</div></div>
+        <div class="live-apps" id="liveApps"></div>
+      </div>
+      <div class="grace" id="liveGrace"></div>
+    </div>
+  </div>
   <div class="cw"><canvas id="cv" width="1920" height="1024"></canvas></div>
   <div class="status" id="hint">Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.</div>
 </div>
