@@ -17,7 +17,7 @@ const toDataURL = (file, mime) => `data:${mime};base64,${fs.readFileSync(file).t
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1320, height: 940, backgroundColor: '#0b0908', title: 'Promethee Card Studio',
+    width: 1500, height: 1000, backgroundColor: '#0b0908', title: 'Promethee Card Studio',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.setMenuBarVisibility(false);

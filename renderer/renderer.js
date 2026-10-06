@@ -61,7 +61,7 @@ function renderLive(st) {
   const tip = $('liveTip');
   if (st.atCap && st.secondsToClearCap > 0) {
     tip.className = 'live-tip show';
-    tip.innerHTML = `Tu es au plafond de malus (<b>35 pts</b>). Reste <b>${fmtElapsed(st.secondsToClearCap)}</b> de plus sans nouveau switch pour repasser dessous.`;
+    tip.innerHTML = `Tu es au plafond de malus (<b>35 pts</b>). Reste <b>${fmtElapsed(st.secondsToClearCap)}</b> de plus sans nouveau switch pour repasser a <b>${st.targetMalus} pts</b>.`;
   } else if (st.switchPenalty > 0) {
     tip.className = 'live-tip show';
     tip.innerHTML = `Malus actuel <b>-${st.switchPenalty} pts</b> (sous le plafond de 35). Garde tes detours < 20s pour qu'ils ne comptent pas.`;
