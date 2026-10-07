@@ -32,10 +32,16 @@ async function setTier(tier) { tierImg = await loadImage(await window.studio.tie
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function fmtElapsed(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`; }
 
-// local grace countdown (driven at ~120ms, not by the 4s poll) + depleting bar
-let graceTimer = null, graceDeadline = 0, graceWindowMs = 10000;
+// local grace countdown (driven at ~120ms) + depleting bar.
+// Visibility is decided by evaluateBar() from the real-time foreground; the deadline
+// is the accurate one from Promethee's DB when available.
+let graceTimer = null, graceDeadline = 0, graceWindowMs = 10000, graceKey = null;
+let lastDbState = null, liveFg = { ok: false };
+const PROVISIONAL_WINDOW_MS = 20000; // used only before the DB has registered the detour
+
 function stopGrace() {
   if (graceTimer) { clearInterval(graceTimer); graceTimer = null; }
+  graceKey = null;
   $('liveGrace').className = 'grace';
   $('liveGraceBar').className = 'grace-bar';
 }
@@ -49,15 +55,53 @@ function tickGrace() {
 function startGrace(p) {
   graceDeadline = p.deadlineMs;
   graceWindowMs = p.windowMs || 10000;
-  const back = p.returnTo ? ` sur <b>${esc(p.returnTo)}</b>` : '';
-  $('liveGrace').className = 'grace show';
-  $('liveGrace').innerHTML = `Tu es sur <b>${esc(p.app)}</b>. Reviens${back} dans <b><span id="liveGraceSecs">--</span>s</b>, sinon <b>+1 switch</b> (~-${p.nextSwitchCost} pts focus).`;
-  $('liveGraceBar').className = 'grace-bar show';
+  const key = (p.app || '') + '>' + (p.returnTo || '');
+  if (key !== graceKey) {           // only rebuild the sentence when the apps change
+    graceKey = key;
+    const back = p.returnTo ? ` sur <b>${esc(p.returnTo)}</b>` : '';
+    $('liveGrace').innerHTML = `Tu es sur <b>${esc(p.app)}</b>. Reviens${back} dans <b><span id="liveGraceSecs">--</span>s</b>, sinon <b>+1 switch</b>.`;
+    $('liveGrace').className = 'grace show';
+    $('liveGraceBar').className = 'grace-bar show';
+  }
   if (!graceTimer) graceTimer = setInterval(tickGrace, 120);
   tickGrace();
 }
 
+// Decide show/hide of the grace bar from DB state (truth for the deadline) + the
+// real-time foreground (truth for "am I still away / did I come back").
+function evaluateBar() {
+  const st = lastDbState;
+  if (!st || !st.active) { stopGrace(); return; }
+  const fgExe = (liveFg && liveFg.ok && liveFg.exe) ? liveFg.exe : null;
+
+  // No live foreground info -> fall back to pure DB behaviour.
+  if (!fgExe) { if (st.pending) startGrace({ ...st.pending }); else stopGrace(); return; }
+
+  const homeExe = (st.pending ? st.pending.returnToExe : st.currentExe) || null;
+  // Back on the home app -> cancel instantly, whatever the DB still says.
+  if (homeExe && fgExe === homeExe) { stopGrace(); return; }
+
+  // DB already registered the detour -> use its accurate deadline.
+  if (st.pending) { startGrace({ ...st.pending }); return; }
+
+  // DB hasn't caught up yet, but live says we left the home app -> provisional bar.
+  if (homeExe && fgExe !== homeExe && liveFg.sinceMs && (Date.now() - liveFg.sinceMs) >= 1000) {
+    startGrace({
+      app: liveFg.app, returnTo: st.currentApp,
+      deadlineMs: liveFg.sinceMs + PROVISIONAL_WINDOW_MS, windowMs: PROVISIONAL_WINDOW_MS,
+    });
+    return;
+  }
+  stopGrace();
+}
+
+async function pollForeground() {
+  try { liveFg = await window.studio.foreground(); } catch { liveFg = { ok: false }; }
+  evaluateBar();
+}
+
 function renderLive(st) {
+  lastDbState = st;
   const card = $('live'), empty = $('liveEmpty'), stats = $('liveStats');
   if (!st || !st.active) {
     card.className = 'live off';
@@ -76,11 +120,7 @@ function renderLive(st) {
   $('livePenalty').textContent = '-' + st.switchPenalty;
   $('liveApps').innerHTML = (st.topDurable && st.topDurable.length)
     ? st.topDurable.map(a => `<b>${esc(a.app)}</b> ${a.minutes}m`).join('<br>') : '';
-  if (st.pending) {
-    startGrace({ ...st.pending, nextSwitchCost: st.nextSwitchCost });
-  } else {
-    stopGrace();
-  }
+  evaluateBar();
 
   const tip = $('liveTip');
   if (st.atCap && st.secondsToClearCap > 0) {
@@ -100,7 +140,10 @@ async function pollLive() {
   try { st = await window.studio.live(); } catch {}
   renderLive(st);
 }
-function startLivePolling() { pollLive(); setInterval(pollLive, 4000); }
+function startLivePolling() {
+  pollLive(); setInterval(pollLive, 4000);
+  pollForeground(); setInterval(pollForeground, 1000);
+}
 
 function applySession(idx) {
   current = sessions[idx];

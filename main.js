@@ -8,6 +8,7 @@ const { loadToken } = require('./lib/token');
 const { fetchMyPosts } = require('./lib/api');
 const { publishOrEdit } = require('./lib/publish');
 const { liveStatus } = require('./lib/live');
+const foreground = require('./lib/foreground');
 
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
 const CONFIG = path.join(app.getPath('userData'), 'config.json');
@@ -53,6 +54,9 @@ ipcMain.handle('studio:live', async () => {
   catch (err) { return { active: false, error: err.message }; }
 });
 
+// real-time foreground app (cosmetic: drives the grace bar only, never the numbers)
+ipcMain.handle('studio:foreground', () => { try { return foreground.getForeground(); } catch { return { ok: false }; } });
+
 ipcMain.handle('studio:tierImage', async (_e, tier) => {
   try { const paths = resolve(); const f = path.join(paths.tiersDir, tier + '.png'); return fs.existsSync(f) ? toDataURL(f, 'image/png') : null; }
   catch { return null; }
@@ -77,5 +81,5 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
   } catch (err) { return { ok: false, error: err.message }; }
 });
 
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => app.quit());
+app.whenReady().then(() => { foreground.start(); createWindow(); });
+app.on('window-all-closed', () => { foreground.stop(); app.quit(); });
