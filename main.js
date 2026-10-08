@@ -1,5 +1,8 @@
 'use strict';
-const { app, BrowserWindow, ipcMain } = require('electron');
+// Promethee Companion: a small mascot above the taskbar that shows the live session
+// state (switches, switch malus, focus score computed like Promethee) and warns on an
+// app switch. Clicking it opens Card Studio (end-of-session card generator).
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { resolve } = require('./lib/paths');
@@ -7,22 +10,55 @@ const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const { fetchMyPosts } = require('./lib/api');
 const { publishOrEdit } = require('./lib/publish');
-const { liveStatus } = require('./lib/live');
+const { Worker } = require('worker_threads');
+const { computeIdle, createSampler } = require('./lib/idle');
+const { computeView } = require('./lib/companion-view');
 const foreground = require('./lib/foreground');
 
-const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
+const APP_TITLE = 'Promethee Companion';
+app.setName('promethee-companion');
+app.setAppUserModelId('fr.creatorsarea.promethee-companion');
+
+// ---------------- config ----------------
 const CONFIG = path.join(app.getPath('userData'), 'config.json');
-const readConfig = () => { try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch { return {}; } };
-const writeConfig = o => { try { fs.writeFileSync(CONFIG, JSON.stringify(o, null, 2)); } catch {} };
+const OLD_CONFIG = path.join(app.getPath('appData'), 'promethee-card-studio', 'config.json');
+const readConfig = () => {
+  try { return JSON.parse(fs.readFileSync(CONFIG, 'utf8')); } catch {}
+  try { return JSON.parse(fs.readFileSync(OLD_CONFIG, 'utf8')); } catch {}   // keep Card Studio prefs
+  return {};
+};
+const writeConfig = o => { try { fs.mkdirSync(path.dirname(CONFIG), { recursive: true }); fs.writeFileSync(CONFIG, JSON.stringify(o, null, 2)); } catch {} };
+const patchConfig = p => { const c = { ...readConfig(), ...p }; writeConfig(c); return c; };
 const toDataURL = (file, mime) => `data:${mime};base64,${fs.readFileSync(file).toString('base64')}`;
 
-function createWindow() {
-  const win = new BrowserWindow({
+// ---------------- single instance ----------------
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => openStudio());
+  app.whenReady().then(boot);
+}
+
+// ======================================================================
+// Card Studio window (unchanged feature set: build + publish the session card)
+// ======================================================================
+const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'];
+let studioWin = null;
+
+function openStudio() {
+  if (studioWin && !studioWin.isDestroyed()) {
+    if (studioWin.isMinimized()) studioWin.restore();
+    studioWin.show(); studioWin.focus();
+    return;
+  }
+  studioWin = new BrowserWindow({
     width: 1320, height: 940, backgroundColor: '#0b0908', title: 'Promethee Card Studio',
+    icon: trayIcon(64),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
-  win.setMenuBarVisibility(false);
-  win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  studioWin.setMenuBarVisibility(false);
+  studioWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  studioWin.on('closed', () => { studioWin = null; });
 }
 
 ipcMain.handle('studio:init', async () => {
@@ -37,7 +73,6 @@ ipcMain.handle('studio:init', async () => {
   const availableTiers = TIERS.filter(t => fs.existsSync(path.join(paths.tiersDir, t + '.png')));
   const cfg = readConfig();
 
-  // existing posts (best effort: needs a valid token)
   let posts = {}, tokenWarning = null;
   try { const { token, uid } = loadToken(paths); posts = await fetchMyPosts(token, uid); }
   catch (e) { tokenWarning = e.message; }
@@ -49,14 +84,6 @@ ipcMain.handle('studio:init', async () => {
   };
 });
 
-ipcMain.handle('studio:live', async () => {
-  try { return await liveStatus(resolve()); }
-  catch (err) { return { active: false, error: err.message }; }
-});
-
-// real-time foreground app (cosmetic: drives the grace bar only, never the numbers)
-ipcMain.handle('studio:foreground', () => { try { return foreground.getForeground(); } catch { return { ok: false }; } });
-
 ipcMain.handle('studio:tierImage', async (_e, tier) => {
   try { const paths = resolve(); const f = path.join(paths.tiersDir, tier + '.png'); return fs.existsSync(f) ? toDataURL(f, 'image/png') : null; }
   catch { return null; }
@@ -66,7 +93,6 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
   try {
     const paths = resolve();
     const { token, uid, secondsLeft } = loadToken(paths);
-    // re-check server state for this session so we never create a duplicate
     const posts = await fetchMyPosts(token, uid);
     const existing = posts[payload.sessionId] || null;
     const frames = payload.frames.map(b64 => Buffer.from(b64, 'base64'));
@@ -76,10 +102,225 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
       body: payload.body || null, title: null, clientVersion: paths.appVersion,
       frames, delayMs: payload.delayMs, hidden: !!payload.hidden,
     });
-    writeConfig({ ...readConfig(), lastTier: payload.tier, handle: payload.handle });
+    patchConfig({ lastTier: payload.tier, handle: payload.handle });
     return { ok: true, tokenMinutes: Math.round(secondsLeft / 60), ...res };
   } catch (err) { return { ok: false, error: err.message }; }
 });
 
-app.whenReady().then(() => { foreground.start(); createWindow(); });
-app.on('window-all-closed', () => { foreground.stop(); app.quit(); });
+// ======================================================================
+// Companion window
+// ======================================================================
+const SIZES = { S: 130, M: 165, L: 200 };   // mascot size in px
+let compWin = null, tray = null, dragTimer = null;
+
+function compSize() { return SIZES[readConfig().companionSize] || SIZES.M; }
+function compBounds(m) {
+  // board on the left of the mascot + headroom for the alert flames + room for the countdown
+  return { width: Math.round(m * 2), height: Math.round(m * 1.5) };
+}
+function defaultPos(w, h) {
+  const wa = screen.getPrimaryDisplay().workArea;
+  return { x: wa.x + wa.width - w - 24, y: wa.y + wa.height - h };
+}
+function clampToScreens(x, y, w, h) {
+  const d = screen.getDisplayMatching({ x, y, width: w, height: h }).workArea;
+  return {
+    x: Math.min(Math.max(x, d.x - Math.round(w * 0.3)), d.x + d.width - Math.round(w * 0.7)),
+    y: Math.min(Math.max(y, d.y), d.y + d.height - Math.round(h * 0.5)),
+  };
+}
+
+function createCompanion() {
+  const m = compSize(), { width, height } = compBounds(m);
+  const cfg = readConfig();
+  const pos = cfg.companionPos ? clampToScreens(cfg.companionPos.x, cfg.companionPos.y, width, height) : defaultPos(width, height);
+  compWin = new BrowserWindow({
+    width, height, x: pos.x, y: pos.y,
+    frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, fullscreenable: false,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false, show: false,
+    // never takes the focus: Promethee must keep seeing your real app in the foreground
+    focusable: false,
+    backgroundColor: '#00000000', title: APP_TITLE,
+    webPreferences: { preload: path.join(__dirname, 'preload-companion.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+  });
+  compWin.setAlwaysOnTop(true, 'screen-saver');
+  compWin.setIgnoreMouseEvents(true, { forward: true });
+  compWin.loadFile(path.join(__dirname, 'companion', 'index.html'));
+  compWin.once('ready-to-show', () => { if (!readConfig().companionHidden) compWin.showInactive(); pushView(true); });
+  compWin.on('closed', () => { compWin = null; });
+}
+
+function rebuildCompanion() {
+  if (compWin && !compWin.isDestroyed()) compWin.destroy();
+  createCompanion();
+}
+
+ipcMain.handle('companion:init', () => {
+  let fonts = null;
+  try {
+    const p = resolve(), f = n => path.join(p.fontsDir, n);
+    fonts = {
+      display: toDataURL(f('PrometheeCondensed.ttf'), 'font/ttf'),
+      mono: toDataURL(f('DMMono-Medium.ttf'), 'font/ttf'),
+      sans: toDataURL(f('DMSans.ttf'), 'font/ttf'),
+    };
+  } catch {}
+  return { fonts, size: compSize() };
+});
+ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMouseEvents(!over, { forward: true }); });
+ipcMain.on('companion:click', () => openStudio());
+ipcMain.on('companion:dragStart', () => {
+  if (!compWin) return;
+  const c = screen.getCursorScreenPoint(), [wx, wy] = compWin.getPosition();
+  const off = { x: c.x - wx, y: c.y - wy };
+  clearInterval(dragTimer);
+  dragTimer = setInterval(() => {
+    if (!compWin) return clearInterval(dragTimer);
+    const p = screen.getCursorScreenPoint();
+    compWin.setPosition(p.x - off.x, p.y - off.y);
+  }, 16);
+});
+ipcMain.on('companion:dragEnd', () => {
+  clearInterval(dragTimer); dragTimer = null;
+  if (compWin) { const [x, y] = compWin.getPosition(); patchConfig({ companionPos: { x, y } }); }
+});
+
+// ---------------- live data loop ----------------
+let worker = null, reqId = 0;
+const pendingReq = new Map();
+function liveStatusAsync(p) {
+  if (!worker) {
+    worker = new Worker(path.join(__dirname, 'lib', 'live-worker.js'));
+    worker.on('message', m => { const r = pendingReq.get(m.id); if (!r) return; pendingReq.delete(m.id); m.ok ? r.resolve(m.result) : r.reject(new Error(m.error)); });
+    worker.on('error', e => { for (const r of pendingReq.values()) r.reject(e); pendingReq.clear(); worker = null; });
+    worker.on('exit', () => { worker = null; });
+  }
+  const id = ++reqId;
+  return new Promise((resolve, reject) => { pendingReq.set(id, { resolve, reject }); worker.postMessage({ id, paths: p }); });
+}
+
+let paths = null, db = null, dbReadAt = 0, dbStamp = '', reading = false, lastSent = '';
+let sampler = null;
+
+function statStamp() {
+  try {
+    const a = fs.statSync(paths.dbPath), w = fs.existsSync(paths.walPath) ? fs.statSync(paths.walPath) : null;
+    return `${a.mtimeMs}:${a.size}:${w ? w.mtimeMs + ':' + w.size : '-'}`;
+  } catch { return ''; }
+}
+
+// Reading the DB is costly (it is big), so only re-read when the DB or its WAL changed,
+// or every 30s as a safety net.
+async function pollDb() {
+  if (reading) return;
+  reading = true;
+  try {
+    if (!paths) paths = resolve();
+    const stamp = statStamp();
+    if (stamp && stamp === dbStamp && Date.now() - dbReadAt < 30000) return;
+    const st = await liveStatusAsync(paths);
+    db = st; dbReadAt = Date.now(); dbStamp = stamp;
+    sampler.follow(st);
+  } catch (e) {
+    paths = null;                       // Promethee updated / moved: re-resolve next time
+    db = { active: false, error: e.message }; dbReadAt = Date.now();
+    sampler.follow(null);
+  } finally { reading = false; }
+}
+
+function currentView() {
+  const now = Date.now();
+  let live = db;
+  if (live && live.active) {
+    // keep the session clock running between DB reads (the malus drops as time passes)
+    const elapsed = live.paused ? 0 : (now - dbReadAt) / 1000;
+    live = { ...live, trackedSeconds: live.trackedSeconds + elapsed };
+  }
+  let idleSeconds = 0;
+  if (live && live.active) {
+    idleSeconds = computeIdle({ startedAtMs: live.startedAt, endedAtMs: now, trackedSeconds: live.trackedSeconds, samples: sampler.samples() }).idleSeconds;
+  }
+  return computeView({ db: live, fg: foreground.getForeground(), now, idleSeconds, samplerSince: sampler.since() });
+}
+
+function pushView(force) {
+  if (!compWin || compWin.isDestroyed()) return;
+  const v = currentView();
+  const key = JSON.stringify(v);
+  if (!force && key === lastSent) return;
+  lastSent = key;
+  compWin.webContents.send('companion:view', v);
+}
+
+// ---------------- tray + auto-launch ----------------
+function trayIcon(size) {
+  const img = nativeImage.createFromPath(path.join(__dirname, 'companion', 'assets', 'focus', 'body.png'));
+  if (img.isEmpty()) return img;
+  return img.crop({ x: 96, y: 98, width: 342, height: 352 }).resize({ width: size, height: size, quality: 'best' });
+}
+
+const loginArgs = () => (app.isPackaged ? [] : [app.getAppPath()]);
+function setAutoLaunch(on) {
+  app.setLoginItemSettings({ openAtLogin: on, path: process.execPath, args: loginArgs() });
+  patchConfig({ autoLaunch: on });
+}
+function isAutoLaunch() {
+  try { return app.getLoginItemSettings({ path: process.execPath, args: loginArgs() }).openAtLogin; }
+  catch { return !!readConfig().autoLaunch; }
+}
+
+function buildTrayMenu() {
+  const cfg = readConfig();
+  const visible = compWin && compWin.isVisible();
+  const size = cfg.companionSize || 'M';
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Ouvrir Card Studio', click: openStudio },
+    { type: 'separator' },
+    { label: visible ? 'Masquer le compagnon' : 'Afficher le compagnon', click: () => toggleCompanion() },
+    { label: 'Taille', submenu: [['S', 'Petit'], ['M', 'Moyen'], ['L', 'Grand']].map(([k, l]) => ({
+      label: l, type: 'radio', checked: size === k,
+      click: () => { patchConfig({ companionSize: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
+    })) },
+    { label: 'Remettre en bas à droite', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } },
+    { type: 'separator' },
+    { label: 'Lancer au démarrage de Windows', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
+    { type: 'separator' },
+    { label: 'Quitter', click: () => { app.isQuitting = true; app.quit(); } },
+  ]));
+}
+
+function toggleCompanion(force) {
+  if (!compWin) return;
+  const show = typeof force === 'boolean' ? force : !compWin.isVisible();
+  if (show) { compWin.showInactive(); compWin.setAlwaysOnTop(true, 'screen-saver'); } else compWin.hide();
+  patchConfig({ companionHidden: !show });
+  buildTrayMenu();
+}
+
+// ---------------- boot ----------------
+function boot() {
+  sampler = createSampler(() => powerMonitor.getSystemIdleTime());
+  foreground.start();
+  createCompanion();
+
+  tray = new Tray(trayIcon(32));
+  tray.setToolTip(APP_TITLE);
+  tray.on('click', () => toggleCompanion());
+  tray.on('double-click', openStudio);
+  buildTrayMenu();
+
+  const cfg = readConfig();
+  if (cfg.autoLaunch === undefined) setAutoLaunch(true);   // first run: start with Windows
+
+  pollDb().then(() => pushView(true));
+  setInterval(pollDb, 2000);
+  setInterval(() => pushView(false), 250);
+  // keep it above the taskbar (Windows sometimes drops topmost after fullscreen apps)
+  setInterval(() => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); }, 30000);
+  screen.on('display-metrics-changed', () => { if (!readConfig().companionPos) rebuildCompanion(); });
+  powerMonitor.on('resume', () => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); });
+}
+
+// the companion lives in the tray: closing Card Studio must not quit the app
+app.on('window-all-closed', () => {});
+app.on('before-quit', () => { foreground.stop(); if (sampler) sampler.stop(); if (worker) worker.terminate(); });

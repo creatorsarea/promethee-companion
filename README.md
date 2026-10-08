@@ -1,42 +1,59 @@
-# Promethee Card Studio
+# Promethee Companion
 
-App Electron locale qui lit ta derniere session dans la DB de Promethee, genere
-une carte de fin de session en **WebP anime** (emblemes et polices pris dans le
-dossier de Promethee), et la publie via l'API.
+Un petit compagnon au-dessus de la barre des taches de Windows qui suit ta session
+Promethee en direct, plus **Card Studio** (ouvert au clic sur le compagnon) pour
+generer et publier la carte de fin de session en WebP anime.
 
 ## Installation
 
 Node 18+ requis.
 
 ```
-cd promethee-card-studio
+cd companion
 npm install
 npm start
 ```
 
-## Fonctionnement
+Au premier lancement, l'app s'inscrit au demarrage de Windows (desactivable depuis
+l'icone dans la zone de notification).
 
-- **Donnees** : lues dans `promethee.db` (+ `-wal`) via sql.js (WASM), donc la
-  session que tu viens de terminer est prise meme avant checkpoint SQLite.
-- **Emblemes / polices** : lus au runtime dans
-  `...\Local\Promethee\app-<derniere version>\resources\assets\` (tiers + fonts).
-  La version est resolue automatiquement, donc rien a changer apres une mise a jour.
-- **Tier** : non stocke dans la DB, donc selectionnable dans l'interface. Le
-  dernier choisi est memorise. Change-le et l'apercu se met a jour aussitot.
-- **Token** : lu et dechiffre en local depuis `session.bin` (DPAPI + AES-GCM),
-  jamais journalise ni envoye ailleurs. S'il est expire, ouvre Promethee pour le
-  rafraichir puis relance.
-- **Publication** : upload du WebP brut (pas de canvas cote app = animation
-  conservee), puis `publish_feed_session`. La case "publier en cache" utilise
-  `publish_feed_session_hidden` (invisible pour les autres), cochee par defaut
-  pour les tests.
+## Le compagnon
 
-## Champs a saisir
+| Etat | Quand | Affichage |
+|---|---|---|
+| Veille | pas de session (ou session en pause) | il dort, Zzz |
+| Focus | session en cours | coucou une fois, box : switch, malus, focus |
+| Alerte | tu as quitte ton app | flammes, "Retourne sur <app>" + decompte |
 
-Places gagnees et FR gagnes ne sont pas dans la DB locale : saisis-les. Le reste
-(duree, XP, streak, dates, rang) est pre-rempli.
+- **Clic** : ouvre Card Studio. **Glisser** : deplace le compagnon (position memorisee).
+- **Icone tray** : afficher/masquer, taille (petit/moyen/grand), remettre en bas a
+  droite, lancement au demarrage, quitter.
+- La fenetre ne prend jamais le focus : Promethee continue de voir ton app.
 
-## Parametres d'encodage
+## Les chiffres
 
-Dans `renderer/renderer.js` : `FPS`, `T` (duree de boucle), `QUALITY`. Baisse-les
-si le fichier depasse 8 Mo (limite de l'app).
+Tout est calcule comme Promethee, a partir de sa DB locale (`promethee.db` + `-wal`,
+lue avec sql.js dans un thread a part, seulement quand elle change) :
+
+- **Switch** : segments "durables" (>= 2 captures de 10s), `switch = segments - 1`,
+  avec les memes filtres d'apps (explorer, dwm, ...).
+- **Malus** : `min(35, switchs par heure x 2)`.
+- **Focus** : `100 - malus - idle`, avec `idle = part inactive x 50`. L'inactivite
+  n'est pas dans la DB de Promethee : le compagnon l'echantillonne lui-meme toutes les
+  15s (meme API, meme seuil de 120s, meme fusion des blocs). Un **!** apparait a cote
+  du focus si le compagnon a ete lance apres le debut de la session.
+- **Alerte** : la detection de l'app au premier plan (temps reel) sert seulement a
+  afficher/cacher l'alerte. Le decompte vise le moment ou Promethee comptera le
+  switch (2e capture sur la nouvelle app), exact des que la DB a vu le detour.
+
+## Card Studio
+
+- **Donnees** : derniere session lue dans la DB locale.
+- **Emblemes / polices** : lus dans `...\Local\Promethee\app-<derniere version>\resources\assets\`.
+- **Token** : lu et dechiffre en local depuis `session.bin` (DPAPI + AES-GCM), jamais
+  journalise ni envoye ailleurs. S'il est expire, ouvre Promethee puis reessaie.
+- **Publication** : upload du WebP brut puis `publish_feed_session`
+  (`publish_feed_session_hidden` si "publier en cache" est coche).
+- Places gagnees et FR gagnes ne sont pas dans la DB locale : saisis-les.
+- Encodage (`renderer/renderer.js`) : `FPS`, `T`, `QUALITY`. Baisse-les si le fichier
+  depasse 8 Mo.

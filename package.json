@@ -1,7 +1,8 @@
 {
-  "name": "promethee-card-studio",
-  "version": "1.0.0",
-  "description": "Genere et publie une carte de fin de session Promethee en WebP anime.",
+  "name": "promethee-companion",
+  "productName": "Promethee Companion",
+  "version": "2.0.0",
+  "description": "Compagnon de session Promethee au-dessus de la barre des taches (switch, malus, focus en direct) + Card Studio pour publier la carte de fin de session en WebP anime.",
   "main": "main.js",
   "scripts": { "start": "electron ." },
   "author": "Zaros",

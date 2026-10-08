@@ -28,123 +28,6 @@ function loop() {
 function loadImage(url) { return new Promise(res => { if (!url) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
 async function setTier(tier) { tierImg = await loadImage(await window.studio.tierImage(tier)); }
 
-// --- live in-progress-session tracker (switch counter) ---
-const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-function fmtElapsed(sec) { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`; }
-
-// local grace countdown (driven at ~120ms) + depleting bar.
-// Visibility is decided by evaluateBar() from the real-time foreground; the deadline
-// is the accurate one from Promethee's DB when available.
-let graceTimer = null, graceDeadline = 0, graceWindowMs = 10000, graceKey = null;
-let lastDbState = null, liveFg = { ok: false };
-const PROVISIONAL_WINDOW_MS = 20000; // used only before the DB has registered the detour
-
-function stopGrace() {
-  if (graceTimer) { clearInterval(graceTimer); graceTimer = null; }
-  graceKey = null;
-  $('liveGrace').className = 'grace';
-  $('liveGraceBar').className = 'grace-bar';
-}
-function tickGrace() {
-  const leftMs = Math.max(0, graceDeadline - Date.now());
-  const pct = Math.max(0, Math.min(100, (leftMs / graceWindowMs) * 100));
-  $('liveGraceFill').style.width = pct + '%';
-  const secsEl = $('liveGraceSecs');
-  if (secsEl) secsEl.textContent = (leftMs / 1000).toFixed(1);
-}
-function startGrace(p) {
-  graceDeadline = p.deadlineMs;
-  graceWindowMs = p.windowMs || 10000;
-  const key = (p.app || '') + '>' + (p.returnTo || '');
-  if (key !== graceKey) {           // only rebuild the sentence when the apps change
-    graceKey = key;
-    const back = p.returnTo ? ` sur <b>${esc(p.returnTo)}</b>` : '';
-    $('liveGrace').innerHTML = `Tu es sur <b>${esc(p.app)}</b>. Reviens${back} dans <b><span id="liveGraceSecs">--</span>s</b>, sinon <b>+1 switch</b>.`;
-    $('liveGrace').className = 'grace show';
-    $('liveGraceBar').className = 'grace-bar show';
-  }
-  if (!graceTimer) graceTimer = setInterval(tickGrace, 120);
-  tickGrace();
-}
-
-// Decide show/hide of the grace bar from DB state (truth for the deadline) + the
-// real-time foreground (truth for "am I still away / did I come back").
-function evaluateBar() {
-  const st = lastDbState;
-  if (!st || !st.active) { stopGrace(); return; }
-  const fgExe = (liveFg && liveFg.ok && liveFg.exe) ? liveFg.exe : null;
-
-  // No live foreground info -> fall back to pure DB behaviour.
-  if (!fgExe) { if (st.pending) startGrace({ ...st.pending }); else stopGrace(); return; }
-
-  const homeExe = (st.pending ? st.pending.returnToExe : st.currentExe) || null;
-  // Back on the home app -> cancel instantly, whatever the DB still says.
-  if (homeExe && fgExe === homeExe) { stopGrace(); return; }
-
-  // DB already registered the detour -> use its accurate deadline.
-  if (st.pending) { startGrace({ ...st.pending }); return; }
-
-  // DB hasn't caught up yet, but live says we left the home app -> provisional bar.
-  if (homeExe && fgExe !== homeExe && liveFg.sinceMs && (Date.now() - liveFg.sinceMs) >= 1000) {
-    startGrace({
-      app: liveFg.app, returnTo: st.currentApp,
-      deadlineMs: liveFg.sinceMs + PROVISIONAL_WINDOW_MS, windowMs: PROVISIONAL_WINDOW_MS,
-    });
-    return;
-  }
-  stopGrace();
-}
-
-async function pollForeground() {
-  try { liveFg = await window.studio.foreground(); } catch { liveFg = { ok: false }; }
-  evaluateBar();
-}
-
-function renderLive(st) {
-  lastDbState = st;
-  const card = $('live'), empty = $('liveEmpty'), stats = $('liveStats');
-  if (!st || !st.active) {
-    card.className = 'live off';
-    $('liveTitle').textContent = 'Session en cours';
-    $('liveMeta').textContent = (st && st.error) ? 'indisponible' : '';
-    empty.style.display = 'block'; stats.style.display = 'none';
-    stopGrace(); $('liveTip').className = 'live-tip';
-    return;
-  }
-  card.className = 'live on' + (st.paused ? ' paused' : '');
-  $('liveTitle').textContent = st.task || 'Session en cours';
-  $('liveMeta').textContent = (st.paused ? 'en pause · ' : '') + fmtElapsed(st.trackedSeconds);
-  empty.style.display = 'none'; stats.style.display = 'flex';
-  const sw = $('liveSwitch'); sw.textContent = st.appSwitchCount; sw.className = 'n' + (st.appSwitchCount > 0 ? ' warn' : '');
-  $('liveFocus').textContent = st.focusFromSwitches;
-  $('livePenalty').textContent = '-' + st.switchPenalty;
-  $('liveApps').innerHTML = (st.topDurable && st.topDurable.length)
-    ? st.topDurable.map(a => `<b>${esc(a.app)}</b> ${a.minutes}m`).join('<br>') : '';
-  evaluateBar();
-
-  const tip = $('liveTip');
-  if (st.atCap && st.secondsToClearCap > 0) {
-    tip.className = 'live-tip show';
-    tip.innerHTML = `Tu es au plafond de malus (<b>35 pts</b>). Reste <b>${fmtElapsed(st.secondsToClearCap)}</b> de plus sans nouveau switch pour repasser a <b>${st.targetMalus} pts</b>.`;
-  } else if (st.switchPenalty > 0) {
-    tip.className = 'live-tip show';
-    tip.innerHTML = `Malus actuel <b>-${st.switchPenalty} pts</b> (sous le plafond de 35). Garde tes detours sous ~10s pour qu'ils ne comptent pas.`;
-  } else {
-    tip.className = 'live-tip good show';
-    tip.innerHTML = `Focus <b>propre</b> pour l'instant, aucun switch penalisant. Continue comme ca.`;
-  }
-}
-
-async function pollLive() {
-  let st = null;
-  try { st = await window.studio.live(); } catch {}
-  renderLive(st);
-}
-function startLivePolling() {
-  pollLive(); setInterval(pollLive, 4000);
-  pollForeground(); setInterval(pollForeground, 1000);
-}
-
 function applySession(idx) {
   current = sessions[idx];
   $('sessbox').innerHTML =
@@ -195,7 +78,6 @@ async function init() {
   applySession(0);
   $('publish').disabled = false;
   loop();
-  startLivePolling();
 }
 
 async function publish() {
