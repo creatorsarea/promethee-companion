@@ -13,7 +13,7 @@ body{font-family:var(--b-font);color:var(--cream)}
 #root{position:absolute;inset:0}
 
 /* ---- mascot ---- */
-.mascot{position:absolute;width:var(--m);height:var(--m);right:calc(var(--m) * .3);bottom:calc(var(--m) * .2)}
+.mascot{position:absolute;width:var(--m);height:var(--m);right:calc(var(--m) * .3);bottom:calc(var(--m) * .06)}
 .mascot .rig,.mascot .bgfx{position:absolute;inset:0}
 .mascot .rig{animation:float 3.4s ease-in-out infinite;transform-origin:50% 95%}
 .mascot .shadow{position:absolute;left:38%;width:24%;bottom:-2%;height:4%;border-radius:50%;background:#000;opacity:.35;filter:blur(3px);animation:shadow 3.4s ease-in-out infinite}
@@ -66,8 +66,8 @@ body{font-family:var(--b-font);color:var(--cream)}
 #root.dragging *,#root.dragging *::before,#root.dragging *::after{animation-play-state:paused!important}
 
 /* ---- the one box in front of the mascot's lower part (stats / open button / countdown) ---- */
-.front{position:absolute;width:var(--m);height:var(--m);right:calc(var(--m) * .3);bottom:calc(var(--m) * .2);pointer-events:none;z-index:5}
-.fbox{position:absolute;left:50%;top:70%;transform:translateX(-50%);white-space:nowrap;text-align:center;pointer-events:auto;cursor:grab;
+.front{position:absolute;width:var(--m);height:var(--m);right:calc(var(--m) * .3);bottom:calc(var(--m) * .06);pointer-events:none;z-index:5}
+.fbox{position:absolute;left:50%;bottom:calc(2px - var(--m) * .06);transform:translateX(-50%);white-space:nowrap;text-align:center;pointer-events:auto;cursor:grab;
   background:var(--mpanel);border:1px solid var(--mline);border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.45);max-width:calc(var(--m) * 1.5)}
 .fbox.is-alert{background:#24120d;border-color:rgba(255,77,46,.5);padding:6px 14px;overflow:hidden}
 .fbox:empty{display:none}
@@ -95,9 +95,12 @@ body{font-family:var(--b-font);color:var(--cream)}
 .fbox .cd{font-family:var(--d-font);font-weight:400;letter-spacing:.8px;font-size:max(30px,calc(var(--m) * .22));line-height:1.05;color:#ff6a4d;font-variant-numeric:tabular-nums}
 
 /* end of alert: "+1" rising from the switch counter */
-.plus1{position:absolute;left:50%;top:calc(-1 * max(26px,calc(var(--m) * .17)));transform:translateX(-50%);font-family:var(--d-font);font-size:max(20px,calc(var(--m) * .13));color:var(--bad);
-  text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;animation:plus1 1.1s ease-out forwards}
-@keyframes plus1{0%{opacity:0;transform:translate(-50%,6px) scale(.8)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-34px) scale(1)}}
+.plus1{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-family:var(--d-font);font-size:max(34px,calc(var(--m) * .24));line-height:1;color:#ff3b1f;
+  -webkit-text-stroke:2px #1a0806;paint-order:stroke fill;text-shadow:0 0 14px rgba(255,59,31,.75),0 3px 8px rgba(0,0,0,.7);pointer-events:none;z-index:8;animation:plus1 1.6s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes plus1{0%{opacity:0;transform:translate(-50%,10px) scale(.5)}12%{opacity:1;transform:translate(-50%,0) scale(1.35)}25%{transform:translate(-50%,-4px) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
+/* the switch number itself flashes red when the switch is counted */
+.stat.hit1 .num.sw{animation:swhit 1s ease-out}
+@keyframes swhit{0%,100%{transform:scale(1);color:var(--accent)}15%{transform:scale(1.35);color:#ff3b1f;text-shadow:0 0 12px rgba(255,59,31,.8)}50%{color:#ff3b1f}}
 /* flash layer covers the mascot */
 .fx-flash{position:absolute;inset:0}
 /* end of alert: back in time -> green check flash over the whole mascot */

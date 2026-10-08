@@ -87,7 +87,9 @@
     lastPlusAt = Date.now();
     var sw = document.getElementById('statSw'); if (!sw) return;
     var p = document.createElement('span'); p.className = 'plus1'; p.textContent = '+1';
-    sw.appendChild(p); setTimeout(function () { p.remove(); }, 1200);
+    sw.appendChild(p); setTimeout(function () { p.remove(); }, 1700);
+    sw.classList.remove('hit1'); void sw.offsetWidth; sw.classList.add('hit1');
+    setTimeout(function () { sw.classList.remove('hit1'); }, 1100);
   }
   function showOkFlash() {
     var d = document.createElement('div'); d.className = 'okflash';
