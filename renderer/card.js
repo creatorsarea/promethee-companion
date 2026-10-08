@@ -94,15 +94,17 @@
     return _emb;
   }
 
-  let _heroY = null;
-  function heroY(ctx, fdur, durSample) {
-    if (_heroY === null) {
+  let _heroY = null, _heroKey = '';
+  function heroY(ctx, fdur, durSample, zoneTop, zoneBot) {
+    const key = fdur + '|' + zoneTop + '|' + zoneBot;
+    if (_heroY === null || key !== _heroKey) {
+      _heroKey = key;
       const sz = parseInt(fdur, 10);
       ctx.font = fdur; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
       const m = ctx.measureText(durSample);
       const top = -(m.actualBoundingBoxAscent || sz * 0.5);
       const bot = sz * 0.46 + 32; // label baseline area
-      const zoneC = (112 + 846) / 2;
+      const zoneC = (zoneTop + zoneBot) / 2;
       _heroY = zoneC - (top + bot) / 2;
     }
     return _heroY;
@@ -111,7 +113,10 @@
 
   // data: {user,durMin,tier,tierName,rank,places,fr,streak,xp,session}
   // assets: {tierImg|null}; makeCanvas(w,h) -> offscreen canvas
-  function drawFrame(ctx, data, assets, makeCanvas, t, T) {
+  // layout (optional): { em, ey, railY, railRight } to make room for other elements
+  // (e.g. the companion variant with a taskbar at the bottom). Defaults = classic card.
+  function drawFrame(ctx, data, assets, makeCanvas, t, T, layout) {
+    const L = layout || {};
     // background
     ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, W, H);
     let g = ctx.createRadialGradient(470, 330, 0, 470, 330, 560);
@@ -121,7 +126,7 @@
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.62)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-    const EM = 460, ex = 470, ey = 330;
+    const EM = L.em || 460, ex = 470, ey = L.ey || 330;
     const prep = prepareEmblem(makeCanvas, assets.tierImg, EM, data.tier);
     const pulse = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / T); // 0 -> 1 -> 0 over the loop
     const scale = 1.0 + 0.07 * pulse;                        // grow, then return to normal
@@ -172,17 +177,17 @@
     const sample = Math.floor(data.durMin / 60) + 'H ' + String(data.durMin % 60).padStart(2, '0') + 'M';
     while (sz > 60 && measure(ctx, sample, sz + 'px PrometheeCondensed', 0) > 820) sz -= 4;
     const fdur = sz + 'px PrometheeCondensed';
-    const HY = heroY(ctx, fdur, sample);
+    const rail = L.railY || 846, railRight = L.railRight || (W - 90);
+    const HY = heroY(ctx, fdur, sample, 112, rail);
     tx(ctx, 1410, HY, dur, fdur, CREAM, 'center', 'middle', 0);
     tx(ctx, 1410, HY + sz * 0.46, 'TOTAL SESSION', '32px DMMono', DIM, 'center', 'alphabetic', 10);
 
     // rail
-    const rail = 846;
     ctx.strokeStyle = 'rgba(255,255,255,.07)';
-    ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(railRight, rail); ctx.stroke();
     const streakVal = Math.round((parseInt(data.streak, 10) || 0) * k) + ' J';
     const items = [['STREAK', streakVal], ['XP', data.xp], ['SESSION', data.session]];
-    const segw = (W - 180) / 3;
+    const segw = (railRight - 90) / 3;
     items.forEach((it, i) => {
       const x = 90 + segw * i + 32;
       tx(ctx, x, rail + 46, it[0], '24px DMMono', DIM2, 'left', 'alphabetic', 4);
