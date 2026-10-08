@@ -22,6 +22,7 @@
 
   var mascot = document.getElementById('mascot'), fbox = document.getElementById('fbox'), flash = document.getElementById('flash'), root = document.getElementById('root');
   var state = null, view = null, cdTimer = null, waveTimer = null, boxKey = '', lastPlusAt = 0;
+  var chalTimer = null, celebrated = {}, seenDone = null;
 
   function fxHTML(f) {
     var tr = (f.flip ? 'scaleX(-1) ' : '') + 'rotate(' + (f.rot || 0) + 'deg)';
@@ -63,9 +64,11 @@
       html = '<button class="openbtn" id="openBtn" type="button">Ouvrir l\'app</button>';
     } else {
       var s = v.stats;
-      key = 'stats:' + JSON.stringify([s.switches, s.malus, s.focus, s.late, v.paused]);
+      var ch = s.challenge && !celebrated[s.challenge.id] ? s.challenge : null;
+      key = 'stats:' + JSON.stringify([s.switches, s.malus, s.focus, s.late, v.paused, ch && ch.id, ch && ch.xp]);
       var warn = s.late ? '<span class="warnbadge">!<span class="tt">Compagnon lancé après le début de la session : l\'inactivité d\'avant son lancement n\'est pas connue, le focus peut différer un peu de Promethee.</span></span>' : '';
-      html = (v.paused ? '<span class="paused-tag">En pause</span>' : '') + '<div class="dash">' +
+      html = (ch ? '<div class="chal" id="chal"><span class="chal-k">Défi</span><span class="chal-xp">+' + ch.xp + ' XP</span><span class="chal-t" id="chalT">--:--</span></div>' : '') +
+        (v.paused ? '<span class="paused-tag">En pause</span>' : '') + '<div class="dash">' +
         '<div class="stat" id="statSw"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div>' +
         '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">malus</span></div>' +
         '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>';
@@ -91,6 +94,36 @@
     el.textContent = (Math.max(0, view.alert.deadlineMs - Date.now()) / 1000).toFixed(1);
   }
 
+  // ---- bonus challenge: time left, then a golden "+XP" when it's done ----
+  function fmtLeft(sec) { sec = Math.max(0, Math.ceil(sec)); var m = Math.floor(sec / 60), x = sec % 60; return m + ':' + (x < 10 ? '0' : '') + x; }
+  function tickChallenge() {
+    var ch = view && view.stats && view.stats.challenge;
+    var el = document.getElementById('chalT');
+    if (!ch || celebrated[ch.id]) return;
+    var left = ch.endsAt ? (ch.endsAt - Date.now()) / 1000 : ch.frozenSec;
+    if (el) el.textContent = fmtLeft(left);
+    if (ch.endsAt && left <= 0) celebrate(ch.id, ch.xp);
+  }
+  function celebrate(id, xp) {
+    if (celebrated[id]) return;
+    celebrated[id] = true;
+    var c = document.getElementById('chal'); if (c) c.remove();
+    var p = document.createElement('span'); p.className = 'xpwin'; p.textContent = '+' + xp + ' XP';
+    flash.appendChild(p); setTimeout(function () { p.remove(); }, 2300);
+    fbox.classList.remove('gold'); void fbox.offsetWidth; fbox.classList.add('gold');
+    setTimeout(function () { fbox.classList.remove('gold'); }, 1400);
+    mascot.classList.add('pop'); setTimeout(function () { mascot.classList.remove('pop'); }, 360);
+  }
+  function checkChallenges(v) {
+    var done = (v.stats && v.stats.bonusDone) || [];
+    if (seenDone === null) { seenDone = {}; done.forEach(function (b) { seenDone[b.id] = true; celebrated[b.id] = true; }); return; }
+    done.forEach(function (b) {
+      if (seenDone[b.id]) return;
+      seenDone[b.id] = true;
+      celebrate(b.id, b.xp);          // no-op if our own timer already celebrated it
+    });
+  }
+
   function showPlusOne() {
     lastPlusAt = Date.now();
     var sw = document.getElementById('statSw'); if (!sw) return;
@@ -107,7 +140,9 @@
   }
 
   function render(v) {
-    var prev = view; view = v;
+    var prev = view;
+    if (v.stats) checkChallenges(v);
+    view = v;
     if (v.mode !== state) {
       var first = state === null; state = v.mode;
       buildMascot(state);
@@ -120,6 +155,8 @@
     } else if (prev && prev.stats && v.stats && v.stats.switches > prev.stats.switches && Date.now() - lastPlusAt > 15000) {
       showPlusOne();   // a switch counted without us seeing the alert end
     }
+    clearInterval(chalTimer); chalTimer = null;
+    if (v.mode !== 'alerte' && v.stats && v.stats.challenge) { tickChallenge(); chalTimer = setInterval(tickChallenge, 500); }
     clearInterval(cdTimer); cdTimer = null;
     if (v.mode === 'alerte' && v.alert) { tickCountdown(); cdTimer = setInterval(tickCountdown, 100); }
   }

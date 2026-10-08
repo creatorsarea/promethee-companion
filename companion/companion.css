@@ -108,4 +108,19 @@ body{font-family:var(--b-font);color:var(--cream)}
 .okflash{position:absolute;inset:4%;pointer-events:none;animation:okflash .85s ease-out forwards}
 @keyframes okflash{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.05)}45%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.02)}}
 
+/* bonus challenge pill, sitting on top of the stats box */
+.chal{position:absolute;left:50%;bottom:100%;transform:translate(-50%,-5px);display:flex;align-items:center;gap:6px;white-space:nowrap;
+  padding:3px 9px;border-radius:999px;background:#2a1d08;border:1px solid rgba(255,200,74,.55);box-shadow:0 4px 12px rgba(0,0,0,.45);font-family:var(--m-font);
+  font-size:max(9px,calc(var(--m) * .056));letter-spacing:.8px;color:#ffd36b}
+.chal-k{text-transform:uppercase;color:#c9a457}
+.chal-xp{font-weight:700}
+.chal-t{font-family:var(--n-font);font-weight:600;font-variant-numeric:tabular-nums;color:#fff1c9;letter-spacing:.2px;font-size:1.15em}
+/* challenge done: golden "+XP" rising + box glow */
+.xpwin{position:absolute;left:50%;top:38%;transform:translateX(-50%);white-space:nowrap;font-family:var(--n-font);font-weight:700;font-size:max(30px,calc(var(--m) * .2));
+  color:#ffd04a;-webkit-text-stroke:2px #2a1606;paint-order:stroke fill;text-shadow:0 0 16px rgba(255,200,60,.8),0 3px 8px rgba(0,0,0,.7);pointer-events:none;z-index:9;
+  animation:xpwin 2.2s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes xpwin{0%{opacity:0;transform:translate(-50%,20px) scale(.4)}14%{opacity:1;transform:translate(-50%,0) scale(1.25)}26%{transform:translate(-50%,-4px) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60px) scale(1)}}
+.fbox.gold{animation:boxgold 1.3s ease-out}
+@keyframes boxgold{0%{box-shadow:0 8px 18px rgba(0,0,0,.45)}20%{box-shadow:0 0 0 2px #ffd04a,0 0 26px rgba(255,200,60,.7)}100%{box-shadow:0 8px 18px rgba(0,0,0,.45)}}
+
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
