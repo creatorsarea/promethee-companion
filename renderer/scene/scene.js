@@ -39,11 +39,12 @@
     const views = [
       [0.0, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
       [1.0, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 4000, windowMs: 10000 } })],
-      [3.5, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
+      [2.5, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
     ];
+    // after the alert shows, the cursor only waits ~0.8 s before going back (same speed)
     const cur = [[0, ...REST], [0.7, 'claude'], [0.8, 'claude', 1], [1.6, 'claude'],
-      [2.6, 'claude'], [3.3, 'vscode'], [3.4, 'vscode', 1], [4.2, 'vscode'], [5.2, ...REST]];
-    const active = [[0, 'vscode'], [0.8, 'claude'], [3.4, 'vscode']];
+      [2.3, 'vscode'], [2.4, 'vscode', 1], [4.2, 'vscode'], [5.2, ...REST]];
+    const active = [[0, 'vscode'], [0.8, 'claude'], [2.4, 'vscode']];
     if (hasLate) {
       views.push([5.7, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 3000, windowMs: 10000 } })]);
       views.push([8.7, () => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [] }, alert: null })]);
