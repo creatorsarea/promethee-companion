@@ -59,29 +59,49 @@ body{font-family:var(--b-font);color:var(--cream)}
 .fx-big .fx-inner{animation:bigfire 1.1s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes bigfire{0%,100%{transform:scale(1,1)}25%{transform:scale(1.015,.985)}50%{transform:scale(.99,1.02)}75%{transform:scale(1.01,.995)}}
 
-/* hit area (click = Card Studio, drag = move) */
-.hitbox{position:absolute;left:18%;top:18%;width:66%;height:72%;cursor:pointer;z-index:4}
+/* hit area on the mascot: drag only (no click action) */
+.hitbox{position:absolute;left:18%;top:18%;width:66%;height:72%;cursor:grab;z-index:4}
+#root.dragging .hitbox,#root.dragging .fbox{cursor:grabbing}
+/* while dragging, everything freezes so the window doesn't wobble */
+#root.dragging *,#root.dragging *::before,#root.dragging *::after{animation-play-state:paused!important}
 
-/* ---- stats board (vertical, tail pointing at the mascot) ---- */
-.boardwrap{position:absolute;right:calc(var(--m) * 1.18);bottom:calc(var(--m) * .23);z-index:2}
-.board{background:var(--mpanel);border:1px solid var(--mline);border-radius:12px;color:var(--cream);box-shadow:0 8px 18px rgba(0,0,0,.45);position:relative;cursor:pointer}
-.board::after{content:"";position:absolute;right:-6px;top:50%;margin-top:-5px;width:10px;height:10px;background:var(--mpanel);border-top:1px solid var(--mline);border-right:1px solid var(--mline);transform:rotate(45deg)}
-.dash{display:flex;flex-direction:column;gap:6px;padding:8px 12px;align-items:center}
-.stat{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:38px}
-.num{font-family:var(--d-font);font-weight:700;line-height:.95;font-size:max(19px,calc(var(--m) * .125));font-variant-numeric:tabular-nums}
+/* ---- the one box in front of the mascot's lower part (stats / open button / countdown) ---- */
+.front{position:absolute;width:var(--m);height:var(--m);right:calc(var(--m) * .3);bottom:calc(var(--m) * .2);pointer-events:none;z-index:5}
+.fbox{position:absolute;left:50%;top:70%;transform:translateX(-50%);white-space:nowrap;text-align:center;pointer-events:auto;cursor:grab;
+  background:var(--mpanel);border:1px solid var(--mline);border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.45);max-width:calc(var(--m) * 1.5)}
+.fbox.is-alert{background:#24120d;border-color:rgba(255,77,46,.5);padding:6px 14px;overflow:hidden}
+.fbox:empty{display:none}
+
+/* stats row */
+.dash{display:flex;align-items:stretch;padding:6px 6px}
+.stat{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 9px;min-width:40px}
+.stat+.stat{border-left:1px solid var(--mline)}
+.num{font-family:var(--d-font);font-weight:400;letter-spacing:.6px;line-height:1;font-size:max(21px,calc(var(--m) * .14));font-variant-numeric:tabular-nums}
 .num.sw{color:var(--accent)}.num.ml{color:var(--bad)}.num.fc{color:var(--cream)}
 .lbl{font-family:var(--m-font);font-size:max(8px,calc(var(--m) * .05));letter-spacing:1.1px;text-transform:uppercase;color:var(--mdim);display:inline-flex;align-items:center;gap:3px}
-.divider{height:1px;width:100%;background:var(--mline)}
-.paused-tag{font-family:var(--m-font);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--warn)}
+.paused-tag{display:block;font-family:var(--m-font);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--warn);padding-top:5px}
 .warnbadge{display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border-radius:50%;background:var(--warn);color:#1a0d08;font-size:8px;font-weight:700;cursor:help;position:relative;font-family:var(--b-font);letter-spacing:0}
-.warnbadge .tt{visibility:hidden;opacity:0;transition:.15s;position:absolute;bottom:160%;left:-40px;background:#000;color:#f4eadf;border:1px solid var(--mline);border-radius:8px;padding:6px 8px;font-size:10.5px;font-weight:400;width:180px;text-align:left;line-height:1.35;text-transform:none;z-index:9;font-family:var(--b-font)}
+.warnbadge .tt{visibility:hidden;opacity:0;transition:.15s;position:absolute;bottom:170%;right:-10px;background:#000;color:#f4eadf;border:1px solid var(--mline);border-radius:8px;padding:6px 8px;font-size:10.5px;font-weight:400;width:180px;white-space:normal;text-align:left;line-height:1.35;text-transform:none;z-index:9;font-family:var(--b-font)}
 .warnbadge:hover .tt{visibility:visible;opacity:1}
 
-/* ---- countdown box, in front of the mascot's lower part ---- */
-.cdbox{position:absolute;left:50%;top:70%;transform:translateX(-50%);z-index:5;white-space:nowrap;padding:6px 14px;text-align:center;
-  background:#24120d;border:1px solid rgba(255,77,46,.5);border-radius:12px;box-shadow:0 8px 18px rgba(0,0,0,.45);max-width:calc(var(--m) * 1.5);overflow:hidden;cursor:pointer}
-.cdbox .back{display:block;font-family:var(--m-font);font-size:max(9px,calc(var(--m) * .055));letter-spacing:1.2px;text-transform:uppercase;color:#ff8f78;overflow:hidden;text-overflow:ellipsis}
-.cdbox .cd{font-family:var(--d-font);font-weight:700;font-size:max(30px,calc(var(--m) * .22));line-height:1.05;color:#ff6a4d;font-variant-numeric:tabular-nums}
-.cdbox .cd.locked{font-size:max(20px,calc(var(--m) * .14));padding:4px 0}
+/* veille: open button */
+.openbtn{display:block;margin:7px;padding:7px 14px;border:0;border-radius:9px;background:var(--accent);color:#1a0d08;font-family:var(--m-font);font-size:max(10px,calc(var(--m) * .062));
+  letter-spacing:1px;text-transform:uppercase;font-weight:700;cursor:pointer}
+.openbtn:hover{background:#ef7448}
+.openbtn:active{transform:translateY(1px)}
+
+/* countdown */
+.fbox .back{display:block;font-family:var(--m-font);font-size:max(9px,calc(var(--m) * .055));letter-spacing:1.2px;text-transform:uppercase;color:#ff8f78;overflow:hidden;text-overflow:ellipsis}
+.fbox .cd{font-family:var(--d-font);font-weight:400;letter-spacing:.8px;font-size:max(30px,calc(var(--m) * .22));line-height:1.05;color:#ff6a4d;font-variant-numeric:tabular-nums}
+
+/* end of alert: "+1" rising from the switch counter */
+.plus1{position:absolute;left:50%;top:calc(-1 * max(26px,calc(var(--m) * .17)));transform:translateX(-50%);font-family:var(--d-font);font-size:max(20px,calc(var(--m) * .13));color:var(--bad);
+  text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;animation:plus1 1.1s ease-out forwards}
+@keyframes plus1{0%{opacity:0;transform:translate(-50%,6px) scale(.8)}15%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,-34px) scale(1)}}
+/* flash layer covers the mascot */
+.fx-flash{position:absolute;inset:0}
+/* end of alert: back in time -> green check flash over the whole mascot */
+.okflash{position:absolute;inset:4%;pointer-events:none;animation:okflash .85s ease-out forwards}
+@keyframes okflash{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1.05)}45%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.02)}}
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}

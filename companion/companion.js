@@ -20,10 +20,8 @@
   var C = LAYOUT.canvas, uid = 0;
   var pct = function (v) { return (v / C * 100) + '%'; };
 
-  var mascot = document.getElementById('mascot'), board = document.getElementById('board');
-  var state = null, view = null, cdTimer = null, waveTimer = null;
-
-  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var mascot = document.getElementById('mascot'), fbox = document.getElementById('fbox'), flash = document.getElementById('flash'), root = document.getElementById('root');
+  var state = null, view = null, cdTimer = null, waveTimer = null, boxKey = '', lastPlusAt = 0;
 
   function fxHTML(f) {
     var tr = (f.flip ? 'scaleX(-1) ' : '') + 'rotate(' + (f.rot || 0) + 'deg)';
@@ -48,30 +46,54 @@
       h += '<div class="zsvg z' + i + '" style="left:' + pct(z[0]) + ';top:' + pct(z[1]) + ';width:' + pct(z[2]) + ';height:' + pct(z[2]) + '"><div class="zin">' + CompanionFlames.zSVG('z' + (uid++)) + '</div></div>';
     });
     h += '</div><div class="hitbox hit"></div>';
-    if (st === 'alerte') h += '<div class="cdbox hit"><div class="back">Retourne sur <span id="cdApp"></span></div><div class="cd" id="cd">10.0</div></div>';
     mascot.className = 'mascot st-' + st;
     mascot.innerHTML = h;
     clearTimeout(waveTimer);
     if (st === 'focus') { mascot.classList.add('waving'); waveTimer = setTimeout(function () { mascot.classList.remove('waving'); }, 2300); }
   }
 
-  function renderBoard(v) {
-    if (v.mode === 'alerte' || !v.stats) { board.innerHTML = ''; return; }
-    var s = v.stats;
-    var warn = s.late ? '<span class="warnbadge">!<span class="tt">Compagnon lancé après le début de la session : l\'inactivité d\'avant son lancement n\'est pas connue, le focus peut différer un peu de Promethee.</span></span>' : '';
-    board.innerHTML = '<div class="board hit"><div class="dash">' +
-      (v.paused ? '<span class="paused-tag">En pause</span>' : '') +
-      '<div class="stat"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div><div class="divider"></div>' +
-      '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">malus</span></div><div class="divider"></div>' +
-      '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div></div>';
+  // ---- the front box: open button (veille), stats (focus / pause), countdown (alerte) ----
+  function renderBox(v) {
+    var key, html;
+    if (v.mode === 'alerte' && v.alert) {
+      key = 'alert:' + v.alert.returnTo;
+      html = '<div class="back">Retourne sur <span id="cdApp"></span></div><div class="cd" id="cd">10.0</div>';
+    } else if (!v.stats) {
+      key = 'open';
+      html = '<button class="openbtn" id="openBtn" type="button">Ouvrir l\'app</button>';
+    } else {
+      var s = v.stats;
+      key = 'stats:' + JSON.stringify([s.switches, s.malus, s.focus, s.late, v.paused]);
+      var warn = s.late ? '<span class="warnbadge">!<span class="tt">Compagnon lancé après le début de la session : l\'inactivité d\'avant son lancement n\'est pas connue, le focus peut différer un peu de Promethee.</span></span>' : '';
+      html = (v.paused ? '<span class="paused-tag">En pause</span>' : '') + '<div class="dash">' +
+        '<div class="stat" id="statSw"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div>' +
+        '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">malus</span></div>' +
+        '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>';
+    }
+    if (key === boxKey) return;
+    boxKey = key;
+    fbox.className = 'fbox hit' + (v.mode === 'alerte' ? ' is-alert' : '');
+    fbox.innerHTML = html;
+    if (v.mode === 'alerte') { var app = document.getElementById('cdApp'); if (app) app.textContent = v.alert.returnTo || ''; }
   }
 
   function tickCountdown() {
     var el = document.getElementById('cd');
     if (!el || !view || !view.alert) return;
-    var left = view.alert.deadlineMs - Date.now();
-    if (left > 0) { el.className = 'cd'; el.textContent = (left / 1000).toFixed(1); }
-    else { el.className = 'cd locked'; el.textContent = '+1 SWITCH'; }
+    el.textContent = (Math.max(0, view.alert.deadlineMs - Date.now()) / 1000).toFixed(1);
+  }
+
+  function showPlusOne() {
+    lastPlusAt = Date.now();
+    var sw = document.getElementById('statSw'); if (!sw) return;
+    var p = document.createElement('span'); p.className = 'plus1'; p.textContent = '+1';
+    sw.appendChild(p); setTimeout(function () { p.remove(); }, 1200);
+  }
+  function showOkFlash() {
+    var d = document.createElement('div'); d.className = 'okflash';
+    d.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%"><path d="M22 52 L42 72 L80 30" fill="none" stroke="#0d2a14" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M22 52 L42 72 L80 30" fill="none" stroke="#4ade80" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    flash.appendChild(d); setTimeout(function () { d.remove(); }, 900);
   }
 
   function render(v) {
@@ -81,32 +103,40 @@
       buildMascot(state);
       if (!first) { mascot.classList.add('pop'); setTimeout(function () { mascot.classList.remove('pop'); }, 360); }
     }
-    var boardKey = JSON.stringify([v.mode, v.stats, v.paused]);
-    if (!prev || boardKey !== JSON.stringify([prev.mode, prev.stats, prev.paused])) renderBoard(v);
-    clearInterval(cdTimer); cdTimer = null;
-    if (v.mode === 'alerte' && v.alert) {
-      var app = document.getElementById('cdApp'); if (app) app.textContent = v.alert.returnTo || '';
-      tickCountdown(); cdTimer = setInterval(tickCountdown, 100);
+    renderBox(v);
+    // end of an alert: back in time -> green check; too late -> "+1" on the switch counter
+    if (prev && prev.mode === 'alerte' && prev.alert && v.mode === 'focus') {
+      if (Date.now() < prev.alert.deadlineMs - 150) showOkFlash(); else showPlusOne();
+    } else if (prev && prev.stats && v.stats && v.stats.switches > prev.stats.switches && Date.now() - lastPlusAt > 15000) {
+      showPlusOne();   // a switch counted without us seeing the alert end
     }
+    clearInterval(cdTimer); cdTimer = null;
+    if (v.mode === 'alerte' && v.alert) { tickCountdown(); cdTimer = setInterval(tickCountdown, 100); }
   }
 
-  // ---- mouse: the window is click-through except over .hit elements ----
+  // ---- mouse: click-through except over .hit; mascot and box = drag, button = open Card Studio ----
   var over = false, down = null, dragging = false;
+  function setDragging(on) {
+    dragging = on;
+    root.classList.toggle('dragging', on);
+    document.querySelectorAll('svg').forEach(function (svg) { try { on ? svg.pauseAnimations() : svg.unpauseAnimations(); } catch (e) {} });
+  }
   window.addEventListener('mousemove', function (e) {
     var hit = !!(e.target && e.target.closest && e.target.closest('.hit'));
     if (hit !== over && !down) { over = hit; window.companion.hover(hit); }
-    if (down && !dragging && (Math.abs(e.screenX - down.x) > 4 || Math.abs(e.screenY - down.y) > 4)) { dragging = true; window.companion.dragStart(); }
+    if (down && !dragging && (Math.abs(e.screenX - down.x) > 3 || Math.abs(e.screenY - down.y) > 3)) { setDragging(true); window.companion.dragStart(); }
   });
   window.addEventListener('mousedown', function (e) {
     if (e.button !== 0 || !(e.target.closest && e.target.closest('.hit'))) return;
-    if (e.target.closest('.warnbadge')) return;
-    down = { x: e.screenX, y: e.screenY }; dragging = false;
+    if (e.target.closest('.warnbadge') || e.target.closest('.openbtn')) return;
+    down = { x: e.screenX, y: e.screenY };
   });
   window.addEventListener('mouseup', function () {
     if (!down) return;
-    if (dragging) window.companion.dragEnd(); else window.companion.click();
-    down = null; dragging = false;
+    if (dragging) { window.companion.dragEnd(); setDragging(false); }
+    down = null;
   });
+  fbox.addEventListener('click', function (e) { if (e.target.closest('.openbtn')) window.companion.click(); });
   document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); } });
 
   // ---- boot ----

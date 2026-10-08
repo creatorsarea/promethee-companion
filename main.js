@@ -115,25 +115,31 @@ let compWin = null, tray = null, dragTimer = null;
 
 function compSize() { return SIZES[readConfig().companionSize] || SIZES.M; }
 function compBounds(m) {
-  // board on the left of the mascot + headroom for the alert flames + room for the countdown
-  return { width: Math.round(m * 2), height: Math.round(m * 1.5) };
+  // mascot + headroom for the alert flames + room for the box in front of it
+  return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
 }
+// "Docked" height: the window bottom sits on the taskbar. Like BongoCat, it can be
+// placed higher on the screen but never lower than this.
+const SNAP_PX = 28;
+function dockY(d, h) { return d.y + d.height - h; }
 function defaultPos(w, h) {
   const wa = screen.getPrimaryDisplay().workArea;
-  return { x: wa.x + wa.width - w - 24, y: wa.y + wa.height - h };
+  return { x: wa.x + wa.width - w - 24, y: dockY(wa, h) };
 }
-function clampToScreens(x, y, w, h) {
-  const d = screen.getDisplayMatching({ x, y, width: w, height: h }).workArea;
+function placeWindow(x, y, w, h) {
+  const d = screen.getDisplayNearestPoint({ x: Math.round(x + w / 2), y: Math.round(y + h / 2) }).workArea;
+  const dy = dockY(d, h);
   return {
     x: Math.min(Math.max(x, d.x - Math.round(w * 0.3)), d.x + d.width - Math.round(w * 0.7)),
-    y: Math.min(Math.max(y, d.y), d.y + d.height - Math.round(h * 0.5)),
+    // below the dock line, or close to it -> snap onto the taskbar
+    y: y >= dy - SNAP_PX ? dy : Math.max(y, d.y),
   };
 }
 
 function createCompanion() {
   const m = compSize(), { width, height } = compBounds(m);
   const cfg = readConfig();
-  const pos = cfg.companionPos ? clampToScreens(cfg.companionPos.x, cfg.companionPos.y, width, height) : defaultPos(width, height);
+  const pos = cfg.companionPos ? placeWindow(cfg.companionPos.x, cfg.companionPos.y, width, height) : defaultPos(width, height);
   compWin = new BrowserWindow({
     width, height, x: pos.x, y: pos.y,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, fullscreenable: false,
@@ -171,18 +177,24 @@ ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMous
 ipcMain.on('companion:click', () => openStudio());
 ipcMain.on('companion:dragStart', () => {
   if (!compWin) return;
-  const c = screen.getCursorScreenPoint(), [wx, wy] = compWin.getPosition();
-  const off = { x: c.x - wx, y: c.y - wy };
+  const c = screen.getCursorScreenPoint(), b = compWin.getBounds();
+  const off = { x: c.x - b.x, y: c.y - b.y }, size = compBounds(compSize());
+  let last = '';
   clearInterval(dragTimer);
   dragTimer = setInterval(() => {
     if (!compWin) return clearInterval(dragTimer);
     const p = screen.getCursorScreenPoint();
-    compWin.setPosition(p.x - off.x, p.y - off.y);
+    const pos = placeWindow(p.x - off.x, p.y - off.y, size.width, size.height);
+    const k = pos.x + ',' + pos.y;
+    if (k === last) return;
+    last = k;
+    // setBounds with a fixed size: setPosition alone can make the window creep in size on scaled displays
+    compWin.setBounds({ x: pos.x, y: pos.y, width: size.width, height: size.height });
   }, 16);
 });
 ipcMain.on('companion:dragEnd', () => {
   clearInterval(dragTimer); dragTimer = null;
-  if (compWin) { const [x, y] = compWin.getPosition(); patchConfig({ companionPos: { x, y } }); }
+  if (compWin) { const b = compWin.getBounds(); patchConfig({ companionPos: { x: b.x, y: b.y } }); }
 });
 
 // ---------------- live data loop ----------------
