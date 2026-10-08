@@ -113,7 +113,7 @@
 
   // data: {user,durMin,tier,tierName,rank,places,fr,streak,xp,session}
   // assets: {tierImg|null}; makeCanvas(w,h) -> offscreen canvas
-  // layout (optional): { em, ey, railY, railRight } to make room for other elements
+  // layout (optional): { em, ey, railY, railRight, railItems } to make room for other elements
   // (e.g. the companion variant with a taskbar at the bottom). Defaults = classic card.
   function drawFrame(ctx, data, assets, makeCanvas, t, T, layout) {
     const L = layout || {};
@@ -186,8 +186,9 @@
     ctx.strokeStyle = 'rgba(255,255,255,.07)';
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(railRight, rail); ctx.stroke();
     const streakVal = Math.round((parseInt(data.streak, 10) || 0) * k) + ' J';
-    const items = [['STREAK', streakVal], ['XP', data.xp], ['SESSION', data.session]];
-    const segw = (railRight - 90) / 3;
+    let items = [['STREAK', streakVal], ['XP', data.xp], ['SESSION', data.session]];
+    if (Array.isArray(L.railItems)) items = items.filter(it => L.railItems.includes(it[0]));
+    const segw = (railRight - 90) / items.length;
     items.forEach((it, i) => {
       const x = 90 + segw * i + 32;
       tx(ctx, x, rail + 46, it[0], '24px DMMono', DIM2, 'left', 'alphabetic', 4);
