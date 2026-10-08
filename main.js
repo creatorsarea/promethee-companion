@@ -81,6 +81,7 @@ ipcMain.handle('studio:init', async () => {
     ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
+    cardStyle: cfg.cardStyle === 'companion' ? 'companion' : 'classic',
   };
 });
 
@@ -95,17 +96,46 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
     const { token, uid, secondsLeft } = loadToken(paths);
     const posts = await fetchMyPosts(token, uid);
     const existing = posts[payload.sessionId] || null;
-    const frames = payload.frames.map(b64 => Buffer.from(b64, 'base64'));
+    const frames = payload.frames.map(f => (typeof f === 'string' ? Buffer.from(f, 'base64') : { buffer: Buffer.from(f.data, 'base64'), x: f.x, y: f.y }));
     const res = await publishOrEdit({
       token, uid, sessionId: payload.sessionId,
       eventId: existing ? existing.eventId : null,
       body: payload.body || null, title: null, clientVersion: paths.appVersion,
       frames, delayMs: payload.delayMs, hidden: !!payload.hidden,
     });
-    patchConfig({ lastTier: payload.tier, handle: payload.handle });
+    patchConfig({ lastTier: payload.tier, handle: payload.handle, ...(payload.cardStyle ? { cardStyle: payload.cardStyle } : {}) });
     return { ok: true, tokenMinutes: Math.round(secondsLeft / 60), ...res };
   } catch (err) { return { ok: false, error: err.message }; }
 });
+
+// ---- "companion" card variant: rendered frame by frame in an offscreen window ----
+// The scene (renderer/scene) runs the real companion renderer on a virtual clock; we step it
+// one frame at a time and capture the pixels. Card Studio encodes each frame to WebP.
+let sceneWin = null;
+ipcMain.handle('studio:sceneBegin', async (_e, data) => {
+  try {
+    if (sceneWin && !sceneWin.isDestroyed()) sceneWin.destroy();
+    sceneWin = new BrowserWindow({
+      show: false, width: 1920, height: 1024, useContentSize: true, frame: false,
+      webPreferences: { offscreen: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+    });
+    sceneWin.webContents.setFrameRate(60);
+    await sceneWin.loadFile(path.join(__dirname, 'renderer', 'scene', 'scene.html'), { query: { capture: '1' } });
+    await sceneWin.webContents.executeJavaScript(`window.__scene.setup(${JSON.stringify(data)})`);
+    const frames = await sceneWin.webContents.executeJavaScript('window.__scene.frames()');
+    const fps = await sceneWin.webContents.executeJavaScript('window.__scene.FPS');
+    return { ok: true, frames, fps };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('studio:sceneFrame', async (_e, i) => {
+  if (!sceneWin || sceneWin.isDestroyed()) throw new Error('scene not started');
+  await sceneWin.webContents.executeJavaScript(`window.__scene.frame(${Number(i) | 0})`);
+  const img = await sceneWin.webContents.capturePage({ x: 0, y: 0, width: 1920, height: 1024 });
+  const { width, height } = img.getSize();
+  return { width, height, bgra: img.toBitmap() };
+});
+ipcMain.handle('studio:sceneEnd', () => { if (sceneWin && !sceneWin.isDestroyed()) sceneWin.destroy(); sceneWin = null; return true; });
+ipcMain.handle('studio:saveConfig', (_e, p) => { patchConfig(p || {}); return true; });
 
 // ======================================================================
 // Companion window

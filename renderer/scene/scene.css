@@ -1,0 +1,25 @@
+/* Card "companion" variant: the usual card + a taskbar + the companion docked on it. */
+html, body { width: 1920px; height: 1024px; margin: 0; overflow: hidden; background: #0b0908 !important; }
+#card { position: absolute; left: 0; top: 0; width: 1920px; height: 1024px; z-index: 0; }
+#root { position: absolute; top: auto !important; left: auto !important; right: 150px !important; bottom: var(--rb, 0px) !important;
+  width: calc(var(--m) * 1.6); height: calc(var(--m) * 1.5); z-index: 3; }
+.hit, .fbox, .hitbox { cursor: default !important; }
+
+.tb { position: absolute; left: 0; right: 0; bottom: 0; height: var(--tb, 102px); background: rgba(28, 24, 22, .94); border-top: 1px solid rgba(255, 255, 255, .07);
+  display: flex; align-items: center; gap: 12px; padding: 0 24px; z-index: 2; font-family: 'PromSans', 'Segoe UI', sans-serif; }
+.tb .ic { position: relative; width: 70px; height: 70px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.tb .ic img { width: 46px; height: 46px; object-fit: contain; }
+.tb .ic.act { background: rgba(255, 255, 255, .08); }
+.tb .ic::after { content: ""; position: absolute; bottom: 3px; left: 50%; width: 8px; height: 4px; margin-left: -4px; border-radius: 2px; background: #9a8f86; opacity: 0; }
+.tb .ic.run::after { opacity: 1; }
+.tb .ic.act::after { width: 24px; margin-left: -12px; background: #df633a; opacity: 1; }
+.tb .search { width: 340px; height: 54px; border-radius: 27px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .06);
+  display: flex; align-items: center; gap: 10px; padding: 0 20px; color: #9a8f86; font-size: 20px; margin-right: 8px; }
+.tb .sp { flex: 1; }
+.tb .clk { font: 20px 'PromMono', Consolas, monospace; color: #cfc4ba; text-align: right; line-height: 1.35; padding-right: 2px; }
+
+#cursor { position: absolute; left: 0; top: 0; width: 42px; height: 56px; z-index: 10; pointer-events: none; }
+#cursor.down svg { transform: scale(.86); transform-origin: 3px 3px; }
+.ripple { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, .75);
+  z-index: 9; pointer-events: none; animation: rip .45s ease-out forwards; }
+@keyframes rip { 0% { transform: scale(.3); opacity: 1 } 100% { transform: scale(1.2); opacity: 0 } }

@@ -26,6 +26,10 @@ button:disabled{opacity:.5;cursor:default;}
 .cw{width:100%;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;}
 canvas{width:100%;height:auto;display:block;}
 a{color:var(--orange);word-break:break-all;}
+.cw{position:relative;}
+#scene{position:absolute;left:0;top:0;width:1920px;height:1024px;border:0;transform-origin:0 0;pointer-events:none;}
+.cw.is-scene{aspect-ratio:1920/1024;}
+.cw.is-scene canvas{visibility:hidden;}
 </style>
 </head>
 <body>
@@ -40,6 +44,12 @@ a{color:var(--orange);word-break:break-all;}
 
   <label>Pseudo</label>
   <input id="handle" value="@zaros"/>
+
+  <label>Style de carte</label>
+  <select id="cardStyle">
+    <option value="classic">Classique</option>
+    <option value="companion">Compagnon (barre des taches)</option>
+  </select>
 
   <label>Tier</label>
   <select id="tier"></select>
@@ -62,7 +72,7 @@ a{color:var(--orange);word-break:break-all;}
 </div>
 
 <div class="stage">
-  <div class="cw"><canvas id="cv" width="1920" height="1024"></canvas></div>
+  <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Apercu variante compagnon" hidden></iframe></div>
   <div class="status" id="hint">Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.</div>
 </div>
 

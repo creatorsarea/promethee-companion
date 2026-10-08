@@ -6,8 +6,9 @@ const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 const makeCanvas = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return o; };
 
-let tierImg = null;
+let tierImg = null, tierUrl = null, fonts = null;
 let sessions = [], posts = {}, profile = { streak: 0 };
+let cardStyle = 'classic', sceneReady = false;
 let current = null;        // selected session object
 let rafId = null, t0 = performance.now();
 
@@ -26,7 +27,45 @@ function loop() {
   rafId = requestAnimationFrame(loop);
 }
 function loadImage(url) { return new Promise(res => { if (!url) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
-async function setTier(tier) { tierImg = await loadImage(await window.studio.tierImage(tier)); }
+async function setTier(tier) { tierUrl = await window.studio.tierImage(tier); tierImg = await loadImage(tierUrl); }
+
+// ---- "companion" variant: preview in an iframe (live), frames rendered offscreen at publish ----
+const pad2 = n => String(n).padStart(2, '0');
+function sceneData() {
+  const end = new Date(current.endedAt || Date.now());
+  return {
+    card: cardData(), tierImage: tierUrl, fonts, companion: current.companion || null,
+    clock: `${pad2(end.getHours())}:${pad2(end.getMinutes())}`,
+    date: `${pad2(end.getDate())}/${pad2(end.getMonth() + 1)}/${end.getFullYear()}`,
+  };
+}
+function postScene(type) {
+  const f = $('scene');
+  if (cardStyle !== 'companion' || !sceneReady || !current) return;
+  f.contentWindow.postMessage({ type, data: sceneData() }, '*');
+}
+function fitScene() {
+  const cw = $('cw'), f = $('scene');
+  f.style.transform = `scale(${cw.clientWidth / 1920})`;
+}
+function setCardStyle(style) {
+  cardStyle = style === 'companion' ? 'companion' : 'classic';
+  $('cardStyle').value = cardStyle;
+  const f = $('scene'), cw = $('cw');
+  if (cardStyle === 'companion') {
+    cw.classList.add('is-scene'); f.hidden = false;
+    if (!f.src) f.src = 'scene/scene.html'; else postScene('setup');
+    fitScene();
+    $('hint').textContent = "Apercu de la variante compagnon (chiffres reels de la session : switch, malus, focus, dernier defi). Le WebP est genere image par image au moment de publier.";
+  } else {
+    cw.classList.remove('is-scene'); f.hidden = true;
+    $('hint').textContent = 'Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.';
+  }
+}
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'scene-ready') { sceneReady = true; postScene('setup'); }
+});
+new ResizeObserver(fitScene).observe(document.getElementById('cw'));
 
 function applySession(idx) {
   current = sessions[idx];
@@ -48,13 +87,14 @@ function applySession(idx) {
     hid.disabled = false;
     ps.textContent = 'Pas encore publie. Le bouton cree le post.';
   }
+  postScene('setup');
 }
 
 async function init() {
   const info = await window.studio.init();
   if (!info || !info.ok) { $('status').textContent = 'Erreur init : ' + (info && info.error); return; }
   $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token indisponible (autocomplete off)' : '');
-  sessions = info.sessions; posts = info.posts || {}; profile = info.profile;
+  sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
     const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff);
@@ -73,11 +113,68 @@ async function init() {
     if (tkey === info.defaultTier) o.selected = true; sel.appendChild(o);
   }
   await setTier(sel.value);
-  sel.addEventListener('change', async () => { await setTier(sel.value); });
+  sel.addEventListener('change', async () => { await setTier(sel.value); postScene('update'); });
+  for (const id of ['handle', 'rank', 'streak', 'places', 'fr']) $(id).addEventListener('input', () => postScene('update'));
 
   applySession(0);
+  setCardStyle(info.cardStyle);
+  $('cardStyle').addEventListener('change', () => { setCardStyle($('cardStyle').value); window.studio.saveConfig({ cardStyle }); });
   $('publish').disabled = false;
   loop();
+}
+
+// Render the companion variant frame by frame (offscreen window, virtual clock) and encode
+// it as an animated WebP where each frame only carries the region that changed since the
+// previous one (the card is mostly static, so a 20 s loop stays under 8 MB).
+// Lowers the quality and retries if the result would still be too heavy.
+const MAX_WEBP = 7.5 * 1024 * 1024;
+function changedRect(cur, ref, w, h, thr) {
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) {
+    let row = y * w * 4;
+    for (let x = 0; x < w; x++, row += 4) {
+      if (Math.abs(cur[row] - ref[row]) > thr || Math.abs(cur[row + 1] - ref[row + 1]) > thr || Math.abs(cur[row + 2] - ref[row + 2]) > thr) {
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) return null;
+  x0 -= x0 % 2; y0 -= y0 % 2;                         // WebP frame offsets must be even
+  return { x: x0, y: y0, w: Math.min(w - x0, x1 - x0 + 1), h: Math.min(h - y0, y1 - y0 + 1) };
+}
+async function companionFrames(st) {
+  const enc = makeCanvas(1920, 1024), ectx = enc.getContext('2d');
+  const crop = makeCanvas(2, 2), cctx = crop.getContext('2d');
+  for (const q of [0.82, 0.7, 0.58]) {
+    const begin = await window.studio.sceneBegin(sceneData());
+    if (!begin.ok) return { ok: false, error: begin.error };
+    const N = begin.frames, frames = []; let bytes = 0, ref = null, id = null;
+    try {
+      for (let i = 0; i < N; i++) {
+        const f = await window.studio.sceneFrame(i);
+        const src = new Uint8Array(f.bgra.buffer, f.bgra.byteOffset, f.bgra.byteLength);
+        if (!id || id.width !== f.width || id.height !== f.height) { id = new ImageData(f.width, f.height); enc.width = f.width; enc.height = f.height; }
+        const px = id.data;
+        for (let k = 0; k < src.length; k += 4) { px[k] = src[k + 2]; px[k + 1] = src[k + 1]; px[k + 2] = src[k]; px[k + 3] = 255; }
+        ectx.putImageData(id, 0, 0);
+        let r = { x: 0, y: 0, w: f.width, h: f.height };
+        if (ref) r = changedRect(px, ref, f.width, f.height, 6) || { x: 0, y: 0, w: 2, h: 2 };
+        // reference = what the viewer sees: update it only where we emit pixels
+        if (!ref) ref = new Uint8ClampedArray(px);
+        else for (let y = r.y; y < r.y + r.h; y++) { const o = (y * f.width + r.x) * 4; ref.set(px.subarray(o, o + r.w * 4), o); }
+        crop.width = r.w; crop.height = r.h;
+        cctx.drawImage(enc, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+        const b64 = crop.toDataURL('image/webp', q).split(',')[1];
+        frames.push(i === 0 ? b64 : { data: b64, x: r.x, y: r.y });
+        bytes += b64.length * 0.75;
+        if (i % 4 === 0) st.textContent = `Generation de la variante compagnon… ${i + 1}/${N} (qualite ${Math.round(q * 100)}, ${(bytes / 1048576).toFixed(1)} Mo)`;
+        if (bytes > MAX_WEBP) break;
+      }
+    } finally { await window.studio.sceneEnd(); }
+    if (bytes <= MAX_WEBP && frames.length === N) return { ok: true, frames, delayMs: Math.round(1000 / begin.fps), bytes };
+    st.textContent = `Trop lourd (${(bytes / 1048576).toFixed(1)} Mo), nouvel essai en qualite plus basse…`;
+  }
+  return { ok: false, error: 'la variante compagnon depasse 8 Mo meme en qualite basse' };
 }
 
 async function publish() {
@@ -86,18 +183,25 @@ async function publish() {
   if (rafId) cancelAnimationFrame(rafId), rafId = null;
 
   const d = cardData();
-  PrometheeCard.resetLayout();
-  const N = Math.round(FPS * T), frames = [];
-  for (let i = 0; i < N; i++) {
-    PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T);
-    frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
-    if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
+  let frames = [], delayMs = Math.round(1000 / FPS);
+  if (cardStyle === 'companion') {
+    const r = await companionFrames(st);
+    if (!r.ok) { st.textContent = 'Erreur : ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; return; }
+    frames = r.frames; delayMs = r.delayMs;
+  } else {
+    PrometheeCard.resetLayout();
+    const N = Math.round(FPS * T);
+    for (let i = 0; i < N; i++) {
+      PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T);
+      frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
+      if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
+    }
   }
   st.textContent = 'Assemblage et publication…';
 
   const res = await window.studio.publish({
-    sessionId: current.sessionId, frames, delayMs: Math.round(1000 / FPS),
-    body: $('body').value, tier: d.tier, handle: d.user, hidden: $('hidden').checked,
+    sessionId: current.sessionId, frames, delayMs,
+    body: $('body').value, tier: d.tier, handle: d.user, hidden: $('hidden').checked, cardStyle,
   });
 
   if (res.ok) {

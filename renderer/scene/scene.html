@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<!-- every relative URL resolves from the companion folder (its renderer uses relative asset paths) -->
+<base href="../../companion/">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; font-src data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Promethee Card — Companion</title>
+<script src="../renderer/scene/scene-clock.js"></script>
+<link rel="stylesheet" href="companion.css">
+<link rel="stylesheet" href="../renderer/scene/scene.css">
+</head>
+<body>
+  <canvas id="card" width="1920" height="1024"></canvas>
+  <div class="tb" id="tb"></div>
+  <div id="root">
+    <div class="mascot" id="mascot"></div>
+    <div class="front"><div class="fx-flash" id="flash"></div><div class="fbox hit" id="fbox"></div></div>
+  </div>
+  <div id="cursor"><svg width="42" height="56" viewBox="0 0 30 40"><path d="M3 3 L3 31 L10 24.5 L14.6 35 L19 33 L14.5 22.6 L24 22.6 Z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/></svg></div>
+  <script src="../renderer/card.js"></script>
+  <script src="flames.js"></script>
+  <script src="../renderer/scene/scene.js"></script>
+</body>
+</html>
