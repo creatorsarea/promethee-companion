@@ -4,6 +4,7 @@
   --m:165px;
   --cream:#f4eadf; --mdim:#9a8f86; --mline:#2e2620; --mpanel:#171311; --accent:#df633a; --bad:#ff4d2e; --warn:#e1a33a;
   --d-font:'PromDisplay','Oswald','Arial Narrow',system-ui,sans-serif;
+  --n-font:'PromSans','Segoe UI',system-ui,sans-serif;  /* numbers: wide and readable */
   --m-font:'PromMono',ui-monospace,Consolas,monospace;
   --b-font:'PromSans','Segoe UI',system-ui,sans-serif;
 }
@@ -76,7 +77,7 @@ body{font-family:var(--b-font);color:var(--cream)}
 .dash{display:flex;align-items:stretch;padding:6px 6px}
 .stat{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 9px;min-width:40px}
 .stat+.stat{border-left:1px solid var(--mline)}
-.num{font-family:var(--d-font);font-weight:400;letter-spacing:.6px;line-height:1;font-size:max(21px,calc(var(--m) * .14));font-variant-numeric:tabular-nums}
+.num{font-family:var(--n-font);font-weight:600;letter-spacing:-.3px;line-height:1;font-size:max(26px,calc(var(--m) * .16));font-variant-numeric:tabular-nums}
 .num.sw{color:var(--accent)}.num.ml{color:var(--bad)}.num.fc{color:var(--cream)}
 .lbl{font-family:var(--m-font);font-size:max(8px,calc(var(--m) * .05));letter-spacing:1.1px;text-transform:uppercase;color:var(--mdim);display:inline-flex;align-items:center;gap:3px}
 .paused-tag{display:block;font-family:var(--m-font);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--warn);padding-top:5px}
@@ -92,10 +93,10 @@ body{font-family:var(--b-font);color:var(--cream)}
 
 /* countdown */
 .fbox .back{display:block;font-family:var(--m-font);font-size:max(9px,calc(var(--m) * .055));letter-spacing:1.2px;text-transform:uppercase;color:#ff8f78;overflow:hidden;text-overflow:ellipsis}
-.fbox .cd{font-family:var(--d-font);font-weight:400;letter-spacing:.8px;font-size:max(30px,calc(var(--m) * .22));line-height:1.05;color:#ff6a4d;font-variant-numeric:tabular-nums}
+.fbox .cd{font-family:var(--n-font);font-weight:600;letter-spacing:-.5px;font-size:max(34px,calc(var(--m) * .22));line-height:1.05;color:#ff6a4d;font-variant-numeric:tabular-nums}
 
 /* end of alert: "+1" rising from the switch counter */
-.plus1{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-family:var(--d-font);font-size:max(34px,calc(var(--m) * .24));line-height:1;color:#ff3b1f;
+.plus1{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font-family:var(--n-font);font-weight:700;font-size:max(34px,calc(var(--m) * .24));line-height:1;color:#ff3b1f;
   -webkit-text-stroke:2px #1a0806;paint-order:stroke fill;text-shadow:0 0 14px rgba(255,59,31,.75),0 3px 8px rgba(0,0,0,.7);pointer-events:none;z-index:8;animation:plus1 1.6s cubic-bezier(.2,.7,.3,1) forwards}
 @keyframes plus1{0%{opacity:0;transform:translate(-50%,10px) scale(.5)}12%{opacity:1;transform:translate(-50%,0) scale(1.35)}25%{transform:translate(-50%,-4px) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
 /* the switch number itself flashes red when the switch is counted */

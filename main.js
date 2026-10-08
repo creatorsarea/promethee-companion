@@ -118,28 +118,35 @@ function compBounds(m) {
   // mascot + headroom for the alert flames + room for the box in front of it
   return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
 }
-// "Docked" height: the window bottom sits on the taskbar. Like BongoCat, it can be
-// placed higher on the screen but never lower than this.
+// "Docked" height: like BongoCat, the box in front of the mascot sits ON the taskbar
+// (top of the stats box = top of the taskbar). The companion can be placed higher on
+// the screen, never lower. dockOffset = stats box height, measured by the renderer.
 const SNAP_PX = 28;
-function dockY(d, h) { return d.y + d.height - h; }
+let dockOffset = null;
+function getDockOffset() { return dockOffset != null ? dockOffset : (readConfig().dockOffset || Math.round(compSize() * 0.36)); }
+function dockY(disp, h) {
+  const wa = disp.workArea, b = disp.bounds;
+  return Math.min(wa.y + wa.height - h + getDockOffset(), b.y + b.height - h);  // never below the screen
+}
 function defaultPos(w, h) {
-  const wa = screen.getPrimaryDisplay().workArea;
-  return { x: wa.x + wa.width - w - 24, y: dockY(wa, h) };
+  const disp = screen.getPrimaryDisplay(), wa = disp.workArea;
+  return { x: wa.x + wa.width - w - 24, y: dockY(disp, h) };
 }
 function placeWindow(x, y, w, h) {
-  const d = screen.getDisplayNearestPoint({ x: Math.round(x + w / 2), y: Math.round(y + h / 2) }).workArea;
-  const dy = dockY(d, h);
+  const disp = screen.getDisplayNearestPoint({ x: Math.round(x + w / 2), y: Math.round(y + h / 2) }), d = disp.workArea;
+  const dy = dockY(disp, h);
+  const docked = y >= dy - SNAP_PX;
   return {
     x: Math.min(Math.max(x, d.x - Math.round(w * 0.3)), d.x + d.width - Math.round(w * 0.7)),
-    // below the dock line, or close to it -> snap onto the taskbar
-    y: y >= dy - SNAP_PX ? dy : Math.max(y, d.y),
+    y: docked ? dy : Math.max(y, d.y),
+    docked,
   };
 }
 
 function createCompanion() {
   const m = compSize(), { width, height } = compBounds(m);
   const cfg = readConfig();
-  const pos = cfg.companionPos ? placeWindow(cfg.companionPos.x, cfg.companionPos.y, width, height) : defaultPos(width, height);
+  const pos = cfg.companionPos ? placeWindow(cfg.companionPos.x, cfg.companionPos.docked !== false ? 1e6 : cfg.companionPos.y, width, height) : defaultPos(width, height);
   compWin = new BrowserWindow({
     width, height, x: pos.x, y: pos.y,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, fullscreenable: false,
@@ -175,6 +182,17 @@ ipcMain.handle('companion:init', () => {
 });
 ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMouseEvents(!over, { forward: true }); });
 ipcMain.on('companion:click', () => openStudio());
+// stats box height (renderer) -> docking line; re-dock if we are docked
+ipcMain.on('companion:boxH', (_e, h) => {
+  h = Math.round(Number(h) || 0);
+  if (h < 20 || h > 200 || h === getDockOffset()) return;
+  dockOffset = h; patchConfig({ dockOffset: h });
+  const cfg = readConfig();
+  if (compWin && (!cfg.companionPos || cfg.companionPos.docked !== false)) {
+    const b = compWin.getBounds(), p = placeWindow(b.x, 1e6, b.width, b.height);
+    compWin.setBounds({ x: p.x, y: p.y, width: b.width, height: b.height });
+  }
+});
 ipcMain.on('companion:dragStart', () => {
   if (!compWin) return;
   const c = screen.getCursorScreenPoint(), b = compWin.getBounds();
@@ -194,7 +212,10 @@ ipcMain.on('companion:dragStart', () => {
 });
 ipcMain.on('companion:dragEnd', () => {
   clearInterval(dragTimer); dragTimer = null;
-  if (compWin) { const b = compWin.getBounds(); patchConfig({ companionPos: { x: b.x, y: b.y } }); }
+  if (compWin) {
+    const b = compWin.getBounds(), p = placeWindow(b.x, b.y, b.width, b.height);
+    patchConfig({ companionPos: { x: b.x, y: b.y, docked: p.docked } });
+  }
 });
 
 // ---------------- live data loop ----------------

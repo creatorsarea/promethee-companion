@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('companion', {
   click: () => ipcRenderer.send('companion:click'),
   dragStart: () => ipcRenderer.send('companion:dragStart'),
   dragEnd: () => ipcRenderer.send('companion:dragEnd'),
+  boxHeight: (h) => ipcRenderer.send('companion:boxH', h),
 });

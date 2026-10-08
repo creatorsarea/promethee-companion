@@ -74,7 +74,15 @@
     boxKey = key;
     fbox.className = 'fbox hit' + (v.mode === 'alerte' ? ' is-alert' : '');
     fbox.innerHTML = html;
+    if (key.indexOf('stats:') === 0) measureBox();
     if (v.mode === 'alerte') { var app = document.getElementById('cdApp'); if (app) app.textContent = v.alert.returnTo || ''; }
+  }
+
+  // the stats box height decides how low the window docks (box top = taskbar top)
+  function measureBox() {
+    var send = function () { if (fbox.offsetHeight) window.companion.boxHeight(fbox.offsetHeight); };
+    requestAnimationFrame(send);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(send);
   }
 
   function tickCountdown() {
@@ -139,6 +147,11 @@
     down = null;
   });
   fbox.addEventListener('click', function (e) { if (e.target.closest('.openbtn')) window.companion.click(); });
+  // during a session there is no button: double-click the companion (or its box) to open Card Studio
+  window.addEventListener('dblclick', function (e) {
+    if (!(e.target.closest && e.target.closest('.hit')) || e.target.closest('.openbtn') || e.target.closest('.warnbadge')) return;
+    window.companion.click();
+  });
   document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); } });
 
   // ---- boot ----
