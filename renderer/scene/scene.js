@@ -9,7 +9,7 @@
 //   live    (Card Studio preview, iframe): real time, loops forever. Data via postMessage.
 //   capture (?capture=1, offscreen window): virtual clock; __scene.frame(i) renders t=i/FPS.
 (function () {
-  const W = 1920, H = 1024, FPS = 12, DUR = 20, M = 285, TB = 102;
+  const W = 1920, H = 1024, FPS = 12, DUR = 16, M = 285, TB = 102;   // DUR: multiple of the card's 4 s pulse
   const LAYOUT = { em: 400, ey: 300, railY: 780, railRight: 1100, railItems: ['STREAK', 'XP'] };
   const REST = [1250, 720];
   const capture = !!window.__capture;
@@ -35,23 +35,24 @@
       S1 = { switches: n - 1, malus: Math.round(m1), focus: Math.max(0, Math.min(100, Math.round(S2.focus + (m2 - m1)))), late: false };
     }
     const xp = c.bonusXp || null;
+    // the action starts right away (like the duration count-up), no idle intro
     const views = [
       [0.0, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
-      [4.0, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 4000, windowMs: 10000 } })],
-      [6.9, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
+      [1.0, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 4000, windowMs: 10000 } })],
+      [3.5, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
     ];
-    const cur = [[0, ...REST], [3.0, ...REST], [3.7, 'claude'], [3.8, 'claude', 1], [4.6, 'claude'],
-      [6.0, 'claude'], [6.7, 'vscode'], [6.8, 'vscode', 1], [7.8, 'vscode'], [8.8, ...REST]];
-    const active = [[0, 'vscode'], [3.8, 'claude'], [6.8, 'vscode']];
+    const cur = [[0, ...REST], [0.7, 'claude'], [0.8, 'claude', 1], [1.6, 'claude'],
+      [2.6, 'claude'], [3.3, 'vscode'], [3.4, 'vscode', 1], [4.2, 'vscode'], [5.2, ...REST]];
+    const active = [[0, 'vscode'], [0.8, 'claude'], [3.4, 'vscode']];
     if (hasLate) {
-      views.push([9.7, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 3000, windowMs: 10000 } })]);
-      views.push([12.7, () => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [] }, alert: null })]);
-      cur.splice(cur.length - 1, 1, [8.6, 'vscode'], [9.3, 'warp'], [9.4, 'warp', 1], [10.2, 'warp'], [11.2, ...REST]);
-      active.push([9.4, 'warp']);
+      views.push([5.7, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 3000, windowMs: 10000 } })]);
+      views.push([8.7, () => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [] }, alert: null })]);
+      cur.splice(cur.length - 1, 1, [4.6, 'vscode'], [5.3, 'warp'], [5.4, 'warp', 1], [6.2, 'warp'], [7.2, ...REST]);
+      active.push([5.4, 'warp']);
     }
     if (xp) {
-      views.push([14.0, (now, id) => ({ mode: 'focus', stats: { ...S2, challenge: { id, xp, endsAt: now + 3000, frozenSec: null }, bonusDone: [] }, alert: null })]);
-      views.push([17.2, (now, id) => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [{ id, xp }] }, alert: null })]);
+      views.push([10.0, (now, id) => ({ mode: 'focus', stats: { ...S2, challenge: { id, xp, endsAt: now + 3000, frozenSec: null }, bonusDone: [] }, alert: null })]);
+      views.push([13.2, (now, id) => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [{ id, xp }] }, alert: null })]);
     }
     cur.push([DUR, ...REST]);
     return { views, cur, active, clicks: cur.filter(k => k[3]).map(k => k[0]) };
