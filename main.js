@@ -96,12 +96,14 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
     const { token, uid, secondsLeft } = loadToken(paths);
     const posts = await fetchMyPosts(token, uid);
     const existing = posts[payload.sessionId] || null;
-    const frames = payload.frames.map(f => (typeof f === 'string' ? Buffer.from(f, 'base64') : { buffer: Buffer.from(f.data, 'base64'), x: f.x, y: f.y }));
+    const toFrame = f => (typeof f === 'string' ? Buffer.from(f, 'base64') : { buffer: Buffer.from(f.data, 'base64'), x: f.x, y: f.y });
+    const frames = payload.frames.map(toFrame);
+    const displayFrames = Array.isArray(payload.displayFrames) && payload.displayFrames.length ? payload.displayFrames.map(toFrame) : null;
     const res = await publishOrEdit({
       token, uid, sessionId: payload.sessionId,
       eventId: existing ? existing.eventId : null,
       body: payload.body || null, title: null, clientVersion: paths.appVersion,
-      frames, delayMs: payload.delayMs, hidden: !!payload.hidden,
+      frames, displayFrames, delayMs: payload.delayMs, hidden: !!payload.hidden,
     });
     patchConfig({ lastTier: payload.tier, handle: payload.handle, ...(payload.cardStyle ? { cardStyle: payload.cardStyle } : {}) });
     return { ok: true, tokenMinutes: Math.round(secondsLeft / 60), ...res };
@@ -301,7 +303,7 @@ function currentView() {
   }
   let idleSeconds = 0;
   if (live && live.active) {
-    idleSeconds = computeIdle({ startedAtMs: live.startedAt, endedAtMs: now, trackedSeconds: live.trackedSeconds, samples: sampler.samples() }).idleSeconds;
+    idleSeconds = computeIdle({ startedAtMs: live.startedAt, endedAtMs: now, trackedSeconds: live.trackedSeconds, samples: sampler.samples(), callIntervals: live.callIntervals || [] }).idleSeconds;
   }
   return computeView({ db: live, fg: foreground.getForeground(), now, idleSeconds, samplerSince: sampler.since() });
 }

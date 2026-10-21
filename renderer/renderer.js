@@ -142,13 +142,46 @@ function changedRect(cur, ref, w, h, thr) {
   x0 -= x0 % 2; y0 -= y0 % 2;                         // WebP frame offsets must be even
   return { x: x0, y: y0, w: Math.min(w - x0, x1 - x0 + 1), h: Math.min(h - y0, y1 - y0 + 1) };
 }
+// Promethee (1.3.33+) names feed images "<uuid>_<W>x<H>.webp" and, when the long edge is
+// over 1200 px, shows a "display copy" "<uuid>_<W>x<H>.d.webp" (long edge 1200) in the feed;
+// the full image only opens on click. Its own uploader cannot resize an animated WebP, so we
+// build the display copy ourselves, animated, from the same frames.
+const DISPLAY_LONG_EDGE = 1200;
+function displaySize(w, h) {
+  const k = DISPLAY_LONG_EDGE / Math.max(w, h);
+  return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+}
+// Animated encoder: each frame after the first only carries the region that changed.
+// add(src) draws src (any canvas) scaled to w x h.
+function makeAnimEncoder(w, h, q) {
+  const cnv = makeCanvas(w, h), c2 = cnv.getContext('2d', { willReadFrequently: true });
+  const crop = makeCanvas(2, 2), cctx = crop.getContext('2d');
+  c2.imageSmoothingQuality = 'high';
+  let ref = null;
+  const enc = { frames: [], bytes: 0 };
+  enc.add = src => {
+    c2.drawImage(src, 0, 0, w, h);
+    const px = c2.getImageData(0, 0, w, h).data;
+    let r = { x: 0, y: 0, w, h };
+    if (ref) r = changedRect(px, ref, w, h, 6) || { x: 0, y: 0, w: 2, h: 2 };
+    if (!ref) ref = new Uint8ClampedArray(px);
+    else for (let y = r.y; y < r.y + r.h; y++) { const o = (y * w + r.x) * 4; ref.set(px.subarray(o, o + r.w * 4), o); }
+    crop.width = r.w; crop.height = r.h;
+    cctx.drawImage(cnv, r.x, r.y, r.w, r.h, 0, 0, r.w, r.h);
+    const b64 = crop.toDataURL('image/webp', q).split(',')[1];
+    enc.frames.push(enc.frames.length === 0 ? b64 : { data: b64, x: r.x, y: r.y });
+    enc.bytes += b64.length * 0.75;
+  };
+  return enc;
+}
+
 async function companionFrames(st) {
   const enc = makeCanvas(1920, 1024), ectx = enc.getContext('2d');
   const crop = makeCanvas(2, 2), cctx = crop.getContext('2d');
   for (const q of [0.82, 0.7, 0.58]) {
     const begin = await window.studio.sceneBegin(sceneData());
     if (!begin.ok) return { ok: false, error: begin.error };
-    const N = begin.frames, frames = []; let bytes = 0, ref = null, id = null;
+    const N = begin.frames, frames = []; let bytes = 0, ref = null, id = null, disp = null;
     try {
       for (let i = 0; i < N; i++) {
         const f = await window.studio.sceneFrame(i);
@@ -167,11 +200,15 @@ async function companionFrames(st) {
         const b64 = crop.toDataURL('image/webp', q).split(',')[1];
         frames.push(i === 0 ? b64 : { data: b64, x: r.x, y: r.y });
         bytes += b64.length * 0.75;
-        if (i % 4 === 0) st.textContent = `Generation de la variante compagnon… ${i + 1}/${N} (qualite ${Math.round(q * 100)}, ${(bytes / 1048576).toFixed(1)} Mo)`;
-        if (bytes > MAX_WEBP) break;
+        if (!disp) { const ds = displaySize(f.width, f.height); disp = makeAnimEncoder(ds.w, ds.h, q); }
+        disp.add(enc);
+        if (i % 4 === 0) st.textContent = `Generation de la variante compagnon… ${i + 1}/${N} (qualite ${Math.round(q * 100)}, ${(bytes / 1048576).toFixed(1)} Mo + apercu ${(disp.bytes / 1048576).toFixed(1)} Mo)`;
+        if (bytes > MAX_WEBP || disp.bytes > MAX_WEBP) break;
       }
     } finally { await window.studio.sceneEnd(); }
-    if (bytes <= MAX_WEBP && frames.length === N) return { ok: true, frames, delayMs: Math.round(1000 / begin.fps), bytes };
+    if (bytes <= MAX_WEBP && disp && disp.bytes <= MAX_WEBP && frames.length === N) {
+      return { ok: true, frames, displayFrames: disp.frames, delayMs: Math.round(1000 / begin.fps), bytes };
+    }
     st.textContent = `Trop lourd (${(bytes / 1048576).toFixed(1)} Mo), nouvel essai en qualite plus basse…`;
   }
   return { ok: false, error: 'la variante compagnon depasse 8 Mo meme en qualite basse' };
@@ -183,31 +220,34 @@ async function publish() {
   if (rafId) cancelAnimationFrame(rafId), rafId = null;
 
   const d = cardData();
-  let frames = [], delayMs = Math.round(1000 / FPS);
+  let frames = [], displayFrames = null, delayMs = Math.round(1000 / FPS);
   if (cardStyle === 'companion') {
     const r = await companionFrames(st);
     if (!r.ok) { st.textContent = 'Erreur : ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; return; }
-    frames = r.frames; delayMs = r.delayMs;
+    frames = r.frames; displayFrames = r.displayFrames; delayMs = r.delayMs;
   } else {
     PrometheeCard.resetLayout();
-    const N = Math.round(FPS * T);
+    const N = Math.round(FPS * T), ds = displaySize(cv.width, cv.height);
+    const disp = makeAnimEncoder(ds.w, ds.h, 0.9);
     for (let i = 0; i < N; i++) {
       PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T);
       frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
+      disp.add(cv);
       if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
     }
+    displayFrames = disp.frames;
   }
   st.textContent = 'Assemblage et publication…';
 
   const res = await window.studio.publish({
-    sessionId: current.sessionId, frames, delayMs,
+    sessionId: current.sessionId, frames, displayFrames, delayMs,
     body: $('body').value, tier: d.tier, handle: d.user, hidden: $('hidden').checked, cardStyle,
   });
 
   if (res.ok) {
     posts[current.sessionId] = { eventId: res.eventId, body: $('body').value, hidden: $('hidden').checked };
     const verb = res.mode === 'edit' ? 'Mis a jour' : (res.hidden ? 'Publie (cache)' : 'Publie (public)');
-    st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} Mo\nservi: ${res.servedType}, anime: ${res.servedAnimated ? 'oui' : 'NON'}, identique: ${res.servedIdentical ? 'oui' : 'NON'}\nevent: ${res.eventId || '(n/a)'}`;
+    st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} Mo (apercu feed ${res.displayBytes ? (res.displayBytes / 1048576).toFixed(2) + ' Mo' : 'aucun'})\nservi: ${res.servedType}, anime: ${res.servedAnimated ? 'oui' : 'NON'}, identique: ${res.servedIdentical ? 'oui' : 'NON'}\nevent: ${res.eventId || '(n/a)'}`;
     const a = document.createElement('a'); a.href = res.url; a.textContent = res.url; a.target = '_blank';
     st.appendChild(document.createElement('br')); st.appendChild(a);
     applySession(parseInt($('sessionSel').value, 10)); // refresh labels/state
