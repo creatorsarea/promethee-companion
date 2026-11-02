@@ -74,7 +74,11 @@ function applySession(idx) {
   $('sessbox').innerHTML =
     `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak ?? profile.streak ?? 0} J</b>\n${current.session}` +
     (current.task ? `\ntache  <b>${current.task}</b>` : '');
-  $('rank').value = current.rank ?? 1;
+  // rank = place inside the league (what the app shows after a session); only known live, so it is
+  // filled for the latest session; older ones keep the value typed by hand
+  if (idx === 0 && frNow && frNow.rank != null) $('rank').value = frNow.rank;
+  else if (!$('rank').dataset.touched) $('rank').value = current.rank ?? 1;
+  if (current.frGain != null) $('fr').value = current.frGain;
   $('streak').value = current.streak ?? profile.streak ?? 0;
   const ex = posts[current.sessionId];
   const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
@@ -92,11 +96,12 @@ function applySession(idx) {
   postScene('setup');
 }
 
+let frNow = null;
 async function init() {
   const info = await window.studio.init();
   if (!info || !info.ok) { $('status').textContent = 'Erreur init : ' + (info && info.error); return; }
   $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token indisponible (autocomplete off)' : '');
-  sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
+  frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
     const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff);
@@ -112,11 +117,11 @@ async function init() {
   const sel = $('tier'); sel.innerHTML = '';
   for (const tkey of (info.availableTiers.length ? info.availableTiers : ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'legend'])) {
     const o = document.createElement('option'); o.value = tkey; o.textContent = tkey.charAt(0).toUpperCase() + tkey.slice(1);
-    if (tkey === info.defaultTier) o.selected = true; sel.appendChild(o);
+    if (tkey === ((info.frNow && info.frNow.tier) || info.defaultTier)) o.selected = true; sel.appendChild(o);
   }
   await setTier(sel.value);
   sel.addEventListener('change', async () => { await setTier(sel.value); postScene('update'); });
-  for (const id of ['handle', 'rank', 'streak', 'places', 'fr']) $(id).addEventListener('input', () => postScene('update'));
+  for (const id of ['handle', 'rank', 'streak', 'places', 'fr']) $(id).addEventListener('input', () => { if (id === 'rank') $('rank').dataset.touched = '1'; postScene('update'); });
 
   applySession(0);
   setCardStyle(info.cardStyle);

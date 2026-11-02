@@ -8,6 +8,9 @@ const path = require('path');
 const { resolve } = require('./lib/paths');
 const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
+const fr = require('./lib/fr');
+const FR_FILE = path.join(app.getPath('userData'), 'fr-history.json');
+async function snapFr() { try { const { token } = loadToken(resolve()); const st = await fr.fetchFrState(token); if (st) { fr.record(FR_FILE, st); return st; } } catch {} return null; }
 const { fetchMyPosts } = require('./lib/api');
 const { publishOrEdit } = require('./lib/publish');
 const { Worker } = require('worker_threads');
@@ -76,9 +79,12 @@ ipcMain.handle('studio:init', async () => {
   let posts = {}, tokenWarning = null;
   try { const { token, uid } = loadToken(paths); posts = await fetchMyPosts(token, uid); }
   catch (e) { tokenWarning = e.message; }
+  const frNow = await snapFr();
+  const frHistory = fr.loadHistory(FR_FILE);
+  for (const s of sessions) s.frGain = fr.gainFor(frHistory, s.startedAt, s.endedAt);
 
   return {
-    ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning,
+    ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning, frNow,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
     cardStyle: ['companion', 'centre'].includes(cfg.cardStyle) ? cfg.cardStyle : 'classic',
@@ -379,6 +385,7 @@ function boot() {
 
   pollDb().then(() => pushView(true));
   setInterval(pollDb, 2000);
+  setTimeout(snapFr, 20000); setInterval(snapFr, 10 * 60e3);
   setInterval(() => pushView(false), 250);
   // keep it above the taskbar (Windows sometimes drops topmost after fullscreen apps)
   setInterval(() => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); }, 30000);
