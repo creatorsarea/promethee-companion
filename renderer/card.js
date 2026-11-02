@@ -111,12 +111,92 @@
   }
   function resetLayout() { _heroY = null; }
 
+
+  // "Centre" variant: the rank emblem is a large faded backdrop, the session time is the hero,
+  // big and centered, and the league / rank / places / FR sit on one row just above the rail.
+  function drawCentered(ctx, data, assets, makeCanvas, t, T) {
+    const CX = W / 2, rail = 846;
+    ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, W, H);
+    let g = ctx.createRadialGradient(CX, 470, 0, CX, 470, 900);
+    g.addColorStop(0, 'rgba(58,37,26,.8)'); g.addColorStop(1, 'rgba(58,37,26,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    const pulse = 0.5 - 0.5 * Math.cos(2 * Math.PI * t / T);
+    const EM = 940, ey = 478;
+    const prep = prepareEmblem(makeCanvas, assets.tierImg, EM, data.tier);
+    ctx.save(); ctx.globalAlpha = 0.10 + 0.07 * pulse;
+    ctx.drawImage(prep.glow, CX - prep.gsz / 2, ey - prep.gsz / 2); ctx.restore();
+    const esz = EM * (1 + 0.04 * pulse);
+    ctx.save(); ctx.globalAlpha = 0.20 + 0.04 * pulse;
+    ctx.drawImage(prep.emblem, CX - esz / 2, ey - esz / 2, esz, esz); ctx.restore();
+    g = ctx.createRadialGradient(CX, 512, 380, CX, 512, 1150);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.6)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    tx(ctx, 90, 78, 'PROMETHEE', '600 34px DMSans', CREAM, 'left', 'alphabetic', 5);
+    tx(ctx, W - 90, 78, data.user, '500 30px DMSans', '#d8cfc6', 'right', 'alphabetic', 0);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(90, 112); ctx.lineTo(W - 90, 112); ctx.stroke();
+
+    const k = easeOut(t / 1.2);
+    // hero duration
+    const mins = Math.round(data.durMin * k);
+    const dur = Math.floor(mins / 60) + 'H ' + String(mins % 60).padStart(2, '0') + 'M';
+    const sample = Math.floor(data.durMin / 60) + 'H ' + String(data.durMin % 60).padStart(2, '0') + 'M';
+    let sz = 560;
+    while (sz > 80 && measure(ctx, sample, sz + 'px PrometheeCondensed', 0) > 1560) sz -= 4;
+    const fdur = sz + 'px PrometheeCondensed';
+    const HY = heroY(ctx, fdur, sample, 112, rail - 120);
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 40;
+    tx(ctx, CX, HY, dur, fdur, CREAM, 'center', 'middle', 0);
+    ctx.restore();
+    tx(ctx, CX, HY + sz * 0.46, 'TOTAL SESSION', '32px DMMono', DIM, 'center', 'alphabetic', 10);
+
+    // info row
+    const parts = [];
+    parts.push({ w: measure(ctx, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', 1), draw: x => tx(ctx, x, rail - 52, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', CREAM, 'left', 'middle', 1) });
+    const rk = 'RANK #' + data.rank, frk = '26px DMMono', wrk = measure(ctx, rk, frk, 4);
+    parts.push({ w: wrk + 40, draw: x => { roundRect(ctx, x, rail - 75, wrk + 40, 46, 23, 'rgba(255,255,255,.08)'); tx(ctx, x + 20, rail - 52, rk, frk, CREAM, 'left', 'middle', 4); } });
+    const pv = parseInt(data.places, 10) || 0;
+    if (pv !== 0) {
+      const pl = Math.round(Math.abs(pv) * k) + ' places', fpl = '600 40px DMSans', wf = measure(ctx, Math.abs(pv) + ' places', fpl, 0);
+      parts.push({ w: 34 + wf, draw: x => {
+        ctx.fillStyle = ORANGE; ctx.beginPath();
+        if (pv > 0) { ctx.moveTo(x, rail - 40); ctx.lineTo(x + 24, rail - 40); ctx.lineTo(x + 12, rail - 66); }
+        else { ctx.moveTo(x, rail - 66); ctx.lineTo(x + 24, rail - 66); ctx.lineTo(x + 12, rail - 40); }
+        ctx.closePath(); ctx.fill();
+        tx(ctx, x + 34, rail - 52, pl, fpl, ORANGE, 'left', 'middle', 0);
+      } });
+    }
+    const frn = parseInt(data.fr, 10);
+    if (Number.isFinite(frn) && frn !== 0) {
+      const s = (frn >= 0 ? '+' : '') + Math.round(frn * k) + ' FR', ffr = '600 40px DMSans';
+      parts.push({ w: measure(ctx, (frn >= 0 ? '+' : '') + frn + ' FR', ffr, 0), draw: x => tx(ctx, x, rail - 52, s, ffr, ORANGE_SOFT, 'left', 'middle', 0) });
+    }
+    const gap = 64, total = parts.reduce((a, p) => a + p.w, 0) + gap * (parts.length - 1);
+    let x = CX - total / 2;
+    parts.forEach(p => { p.draw(x); x += p.w + gap; });
+
+    // rail
+    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
+    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp], ['SESSION', data.session]];
+    const segw = (W - 180) / items.length;
+    items.forEach((it, i) => {
+      const xx = 90 + segw * i + 32;
+      tx(ctx, xx, rail + 46, it[0], '24px DMMono', DIM2, 'left', 'alphabetic', 4);
+      tx(ctx, xx, rail + 96, String(it[1]), '600 38px DMSans', CREAM, 'left', 'alphabetic', 0);
+      if (i > 0) { ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.beginPath(); ctx.moveTo(90 + segw * i, rail + 16); ctx.lineTo(90 + segw * i, rail + 88); ctx.stroke(); }
+    });
+  }
+
   // data: {user,durMin,tier,tierName,rank,places,fr,streak,xp,session}
   // assets: {tierImg|null}; makeCanvas(w,h) -> offscreen canvas
   // layout (optional): { em, ey, railY, railRight, railItems } to make room for other elements
   // (e.g. the companion variant with a taskbar at the bottom). Defaults = classic card.
   function drawFrame(ctx, data, assets, makeCanvas, t, T, layout) {
     const L = layout || {};
+    if (L.center) return drawCentered(ctx, data, assets, makeCanvas, t, T);
     // background
     ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, W, H);
     let g = ctx.createRadialGradient(470, 330, 0, 470, 330, 560);

@@ -21,9 +21,11 @@ function cardData() {
   };
 }
 
+const styleLayout = () => (cardStyle === 'centre' ? { center: true } : undefined);
+
 function loop() {
   const t = ((performance.now() - t0) / 1000) % T;
-  PrometheeCard.drawFrame(ctx, cardData(), { tierImg }, makeCanvas, t, T);
+  PrometheeCard.drawFrame(ctx, cardData(), { tierImg }, makeCanvas, t, T, styleLayout());
   rafId = requestAnimationFrame(loop);
 }
 function loadImage(url) { return new Promise(res => { if (!url) return res(null); const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = url; }); }
@@ -49,7 +51,7 @@ function fitScene() {
   f.style.transform = `scale(${cw.clientWidth / 1920})`;
 }
 function setCardStyle(style) {
-  cardStyle = style === 'companion' ? 'companion' : 'classic';
+  cardStyle = style === 'companion' ? 'companion' : style === 'centre' ? 'centre' : 'classic';
   $('cardStyle').value = cardStyle;
   const f = $('scene'), cw = $('cw');
   if (cardStyle === 'companion') {
@@ -230,7 +232,7 @@ async function publish() {
     const N = Math.round(FPS * T), ds = displaySize(cv.width, cv.height);
     const disp = makeAnimEncoder(ds.w, ds.h, 0.9);
     for (let i = 0; i < N; i++) {
-      PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T);
+      PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T, styleLayout());
       frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
       disp.add(cv);
       if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }

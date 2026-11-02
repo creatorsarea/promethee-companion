@@ -81,7 +81,7 @@ ipcMain.handle('studio:init', async () => {
     ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
-    cardStyle: cfg.cardStyle === 'companion' ? 'companion' : 'classic',
+    cardStyle: ['companion', 'centre'].includes(cfg.cardStyle) ? cfg.cardStyle : 'classic',
   };
 });
 
