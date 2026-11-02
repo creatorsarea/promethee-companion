@@ -52,8 +52,12 @@ lue avec sql.js dans un thread a part, seulement quand elle change) :
 - **Emblemes / polices** : lus dans `...\Local\Promethee\app-<derniere version>\resources\assets\`.
 - **Token** : lu et dechiffre en local depuis `session.bin` (DPAPI + AES-GCM), jamais
   journalise ni envoye ailleurs. S'il est expire, ouvre Promethee puis reessaie.
-- **Publication** : upload du WebP brut puis `publish_feed_session`
-  (`publish_feed_session_hidden` si "publier en cache" est coche).
+- **Publication** : upload du WebP brut (et de sa copie d'affichage `.d.webp` si le grand cote
+  depasse 1200 px) puis `publish_feed_session`. "Publier en cache" passe par
+  `publish_feed_session_v2` avec l'audience `only_me`, comme l'app pour un post prive avec image.
+- **Pauses** : depuis Promethee 1.3.34, les evenements de fenetre enregistres pendant une pause
+  (`sessions.break_log`, plus la pause en cours) sont ignores pour les changements d'app, les
+  apps principales et le temps d'appel. Le suivi live fait pareil.
 - Places gagnees et FR gagnes ne sont pas dans la DB locale : saisis-les.
 - Encodage (`renderer/renderer.js`) : `FPS`, `T`, `QUALITY`. Baisse-les si le fichier
   depasse 8 Mo.
