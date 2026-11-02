@@ -113,7 +113,7 @@
 
 
   // "Centre" variant: the rank emblem is a large faded backdrop, the session time is the hero,
-  // big and centered, and the league / rank / places / FR sit on one row just above the rail.
+  // big and centered, and the league / rank / FR sit on one row just above the rail.
   function drawCentered(ctx, data, assets, makeCanvas, t, T) {
     const CX = W / 2, rail = 846;
     ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, W, H);
@@ -157,17 +157,6 @@
     parts.push({ w: measure(ctx, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', 1), draw: x => tx(ctx, x, rail - 52, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', CREAM, 'left', 'middle', 1) });
     const rk = 'RANK #' + data.rank, frk = '26px DMMono', wrk = measure(ctx, rk, frk, 4);
     parts.push({ w: wrk + 40, draw: x => { roundRect(ctx, x, rail - 75, wrk + 40, 46, 23, 'rgba(255,255,255,.08)'); tx(ctx, x + 20, rail - 52, rk, frk, CREAM, 'left', 'middle', 4); } });
-    const pv = parseInt(data.places, 10) || 0;
-    if (pv !== 0) {
-      const pl = Math.round(Math.abs(pv) * k) + ' places', fpl = '600 40px DMSans', wf = measure(ctx, Math.abs(pv) + ' places', fpl, 0);
-      parts.push({ w: 34 + wf, draw: x => {
-        ctx.fillStyle = ORANGE; ctx.beginPath();
-        if (pv > 0) { ctx.moveTo(x, rail - 40); ctx.lineTo(x + 24, rail - 40); ctx.lineTo(x + 12, rail - 66); }
-        else { ctx.moveTo(x, rail - 66); ctx.lineTo(x + 24, rail - 66); ctx.lineTo(x + 12, rail - 40); }
-        ctx.closePath(); ctx.fill();
-        tx(ctx, x + 34, rail - 52, pl, fpl, ORANGE, 'left', 'middle', 0);
-      } });
-    }
     const frn = parseInt(data.fr, 10);
     if (Number.isFinite(frn) && frn !== 0) {
       const s = (frn >= 0 ? '+' : '') + Math.round(frn * k) + ' FR', ffr = '600 40px DMSans';
@@ -180,7 +169,7 @@
     // rail
     ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
-    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp], ['SESSION', data.session]];
+    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp]];
     const segw = (W - 180) / items.length;
     items.forEach((it, i) => {
       const xx = 90 + segw * i + 32;

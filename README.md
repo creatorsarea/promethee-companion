@@ -56,7 +56,7 @@ lue avec sql.js dans un thread a part, seulement quand elle change) :
   depasse 1200 px) puis `publish_feed_session`. "Publier en cache" passe par
   `publish_feed_session_v2` avec l'audience `only_me`, comme l'app pour un post prive avec image.
 - **Styles de carte** (liste deroulante) : Classique, Centre (temps de session en grand au milieu,
-  embleme du rang en fond, ligue/rang/places/FR sur une ligne) et Compagnon.
+  embleme du rang en fond, ligue/rang/FR sur une ligne, sans variation de places ni numero de session) et Compagnon.
 - **Pauses** : depuis Promethee 1.3.34, les evenements de fenetre enregistres pendant une pause
   (`sessions.break_log`, plus la pause en cours) sont ignores pour les changements d'app, les
   apps principales et le temps d'appel. Le suivi live fait pareil.
