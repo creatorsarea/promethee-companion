@@ -113,7 +113,7 @@
 
 
   // "Centre" variant: the rank emblem is a large faded backdrop, the session time is the hero,
-  // big and centered, and the league / rank / FR sit on one row just above the rail.
+  // big and centered, and the rank (big) sits just above the rail, with streak / XP / focus rate in the rail.
   function drawCentered(ctx, data, assets, makeCanvas, t, T) {
     const CX = W / 2, rail = 846;
     ctx.fillStyle = '#0b0908'; ctx.fillRect(0, 0, W, H);
@@ -146,30 +146,23 @@
     let sz = 560;
     while (sz > 80 && measure(ctx, sample, sz + 'px PrometheeCondensed', 0) > 1560) sz -= 4;
     const fdur = sz + 'px PrometheeCondensed';
-    const HY = heroY(ctx, fdur, sample, 112, rail - 120);
+    const HY = heroY(ctx, fdur, sample, 112, rail - 130);
     ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 40;
     tx(ctx, CX, HY, dur, fdur, CREAM, 'center', 'middle', 0);
     ctx.restore();
     tx(ctx, CX, HY + sz * 0.46, 'TOTAL SESSION', '32px DMMono', DIM, 'center', 'alphabetic', 10);
 
-    // info row
-    const parts = [];
-    parts.push({ w: measure(ctx, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', 1), draw: x => tx(ctx, x, rail - 52, 'LIGUE ' + data.tierName.toUpperCase(), '600 40px DMSans', CREAM, 'left', 'middle', 1) });
-    const rk = 'RANK #' + data.rank, frk = '26px DMMono', wrk = measure(ctx, rk, frk, 4);
-    parts.push({ w: wrk + 40, draw: x => { roundRect(ctx, x, rail - 75, wrk + 40, 46, 23, 'rgba(255,255,255,.08)'); tx(ctx, x + 20, rail - 52, rk, frk, CREAM, 'left', 'middle', 4); } });
-    const frn = parseInt(data.fr, 10);
-    if (Number.isFinite(frn) && frn !== 0) {
-      const s = (frn >= 0 ? '+' : '') + Math.round(frn * k) + ' FR', ffr = '600 40px DMSans';
-      parts.push({ w: measure(ctx, (frn >= 0 ? '+' : '') + frn + ' FR', ffr, 0), draw: x => tx(ctx, x, rail - 52, s, ffr, ORANGE_SOFT, 'left', 'middle', 0) });
-    }
-    const gap = 64, total = parts.reduce((a, p) => a + p.w, 0) + gap * (parts.length - 1);
-    let x = CX - total / 2;
-    parts.forEach(p => { p.draw(x); x += p.w + gap; });
+    // rank, big, centered above the rail
+    const rk = 'RANK #' + data.rank, frk = '44px DMMono', wrk = measure(ctx, rk, frk, 6);
+    roundRect(ctx, CX - wrk / 2 - 36, rail - 106, wrk + 72, 88, 44, 'rgba(255,255,255,.09)');
+    tx(ctx, CX, rail - 62, rk, frk, CREAM, 'center', 'middle', 6);
 
     // rail
     ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
-    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp]];
+    const frn = parseInt(data.fr, 10);
+    const frTxt = Number.isFinite(frn) ? (frn >= 0 ? '+' : '') + Math.round(frn * k) : '—';
+    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp], ['FOCUS RATE', frTxt]];
     const segw = (W - 180) / items.length;
     items.forEach((it, i) => {
       const xx = 90 + segw * i + 32;
