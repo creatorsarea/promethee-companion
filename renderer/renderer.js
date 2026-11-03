@@ -78,22 +78,24 @@ function applySession(idx) {
   if (current.frGain != null) $('fr').value = current.frGain;
   $('streak').value = current.streak ?? profile.streak ?? 0;
   const ex = posts[current.sessionId];
-  const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
+  const btn = $('publish'), ps = $('poststate'), vis = $('visibility');
   if (ex) {
     $('body').value = ex.body || '';
     btn.textContent = 'Update session';
-    hid.checked = ex.hidden; hid.disabled = true;
-    ps.innerHTML = `Already published (${ex.hidden ? 'hidden' : 'public'}). The button updates image + text.`;
+    vis.value = ex.audience || (ex.hidden ? 'only_me' : 'everyone');
+    ps.textContent = `Already published (${AUDIENCE_LABEL[vis.value] || vis.value}). The button updates the image and text, and the visibility if you change it.`;
   } else {
     $('body').value = '';
     btn.textContent = 'Publish session';
-    hid.disabled = false;
+    vis.value = lastAudience;
     ps.textContent = 'Not published yet. The button creates the post.';
   }
   postScene('setup');
 }
 
 let frNow = null;
+const AUDIENCE_LABEL = { everyone: 'everyone', friends: 'friends', only_me: 'only me' };
+let lastAudience = 'only_me';
 // ---- helpers ----
 const fmtH = sec => { const m = Math.round((sec || 0) / 60), h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
 const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
@@ -205,6 +207,7 @@ async function init() {
   const info = await window.studio.init();
   if (!info || !info.ok) { $('status').textContent = 'Init error: ' + (info && info.error); return; }
   $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ', token unavailable so rank, league and FR are not filled in' : '');
+  if (info.audience) lastAudience = info.audience;
   frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
@@ -352,13 +355,14 @@ async function publish() {
 
   const res = await window.studio.publish({
     sessionId: current.sessionId, frames, displayFrames, delayMs,
-    body: $('body').value, tier: d.tier, handle: d.user, hidden: $('hidden').checked, cardStyle,
+    body: $('body').value, tier: d.tier, handle: d.user, audience: $('visibility').value, cardStyle,
   });
 
   if (res.ok) {
-    posts[current.sessionId] = { eventId: res.eventId, body: $('body').value, hidden: $('hidden').checked };
-    const verb = res.mode === 'edit' ? 'Updated' : (res.hidden ? 'Published (hidden)' : 'Published (public)');
+    posts[current.sessionId] = { eventId: res.eventId, body: $('body').value, audience: res.audience, hidden: res.audience !== 'everyone' };
+    const verb = (res.mode === 'edit' ? 'Updated' : 'Published') + ` (visible to ${AUDIENCE_LABEL[res.audience] || res.audience})`;
     st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} MB (feed preview ${res.displayBytes ? (res.displayBytes / 1048576).toFixed(2) + ' MB' : 'none'})\nserved: ${res.servedType}, animated: ${res.servedAnimated ? 'yes' : 'NO'}, identical: ${res.servedIdentical ? 'yes' : 'NO'}\nevent: ${res.eventId || '(n/a)'}`;
+    if (res.audienceError) st.textContent += `\nVisibility not changed: ${res.audienceError}`;
     const a = document.createElement('a'); a.href = res.url; a.textContent = res.url; a.target = '_blank';
     st.appendChild(document.createElement('br')); st.appendChild(a);
     applySession(parseInt($('sessionSel').value, 10)); // refresh labels/state

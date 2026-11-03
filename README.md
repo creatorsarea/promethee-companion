@@ -104,3 +104,9 @@ Under the preview, Card Studio shows your stats and a comparison with other peop
   `get_user_focus_history_local_v1` per account, 15 accounts max, 4 requests at a time) ranks the
   accounts you follow by focus over the last 7 days. Read-only, same RPCs as the app, your own token.
   Results are cached for 10 minutes; "Refresh" forces a reload. Names are rendered as plain text.
+## Visibility
+
+The "Visible to" menu (Everyone, Friends, Only me) matches the app's audiences. A new post goes through
+`publish_feed_session` (everyone) or `publish_feed_session_v2` (friends, only me). For a post that is
+already published, changing the menu before "Update session" also calls `set_feed_event_audience`. The
+last choice is remembered; the default is "Only me".

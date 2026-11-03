@@ -101,6 +101,7 @@ ipcMain.handle('studio:init', async () => {
     ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning, frNow,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
+    audience: ['everyone', 'friends', 'only_me'].includes(cfg.lastAudience) ? cfg.lastAudience : 'only_me',
     cardStyle: cfg.cardStyle === 'centre' ? 'center' : (['companion', 'center'].includes(cfg.cardStyle) ? cfg.cardStyle : 'classic'), // 'centre' = legacy value
   };
 });
@@ -143,9 +144,11 @@ ipcMain.handle('studio:publish', async (_e, payload) => {
       token, uid, sessionId: payload.sessionId,
       eventId: existing ? existing.eventId : null,
       body: payload.body || null, title: null, clientVersion: paths.appVersion,
-      frames, displayFrames, delayMs: payload.delayMs, hidden: !!payload.hidden,
+      frames, displayFrames, delayMs: payload.delayMs,
+      audience: ['everyone', 'friends', 'only_me'].includes(payload.audience) ? payload.audience : 'only_me',
+      currentAudience: existing ? (existing.audience || (existing.hidden ? 'only_me' : 'everyone')) : null,
     });
-    patchConfig({ lastTier: payload.tier, handle: payload.handle, ...(payload.cardStyle ? { cardStyle: payload.cardStyle } : {}) });
+    patchConfig({ lastTier: payload.tier, handle: payload.handle, lastAudience: res.audience, ...(payload.cardStyle ? { cardStyle: payload.cardStyle } : {}) });
     return { ok: true, tokenMinutes: Math.round(secondsLeft / 60), ...res };
   } catch (err) { return { ok: false, error: err.message }; }
 });
