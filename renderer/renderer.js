@@ -112,7 +112,7 @@ function setupFollow(r) {
 async function doFollow() {
   $('offerBtn').disabled = $('chipBtn').disabled = true; lastFollowClick = Date.now();
   const res = await window.studio.follow();
-  const msg = res.ok ? (res.state === 'requested' ? 'Follow request sent. Thanks!' : 'Thanks for following!') : 'Could not follow: ' + res.error;
+  const msg = res.ok ? (res.state === 'requested' ? 'Follow request sent. Thank you!' : 'Thank you, that means a lot!') : 'Could not follow: ' + res.error;
   $('offerText').textContent = msg; $('chipText').textContent = msg;
   if (!res.ok) { $('offerBtn').disabled = $('chipBtn').disabled = false; return; }
   $('offerBtn').hidden = $('chipBtn').hidden = true; followInfo = null;
