@@ -58,10 +58,10 @@ function setCardStyle(style) {
     cw.classList.add('is-scene'); f.hidden = false;
     if (!f.src) f.src = 'scene/scene.html'; else postScene('setup');
     fitScene();
-    $('hint').textContent = "Apercu de la variante compagnon (chiffres reels de la session : switch, malus, focus, dernier defi). Le WebP est genere image par image au moment de publier.";
+    $('hint').textContent = "Preview of the companion variant (real session numbers: switches, penalty, focus, last challenge). The WebP is generated frame by frame when you publish.";
   } else {
     cw.classList.remove('is-scene'); f.hidden = true;
-    $('hint').textContent = 'Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.';
+    $('hint').textContent = 'Live animated preview. The final WebP is generated when you publish.';
   }
 }
 window.addEventListener('message', e => {
@@ -72,8 +72,8 @@ new ResizeObserver(fitScene).observe(document.getElementById('cw'));
 function applySession(idx) {
   current = sessions[idx];
   $('sessbox').innerHTML =
-    `duree  <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak ?? profile.streak ?? 0} J</b>\n${current.session}` +
-    (current.task ? `\ntache  <b>${current.task}</b>` : '');
+    `time   <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak ?? profile.streak ?? 0} d</b>\n${current.session}` +
+    (current.task ? `\ntask   <b>${current.task}</b>` : '');
   // rank = place inside the league (what the app shows after a session); only known live, so it is
   // filled for the latest session; older ones keep the value typed by hand
   if (idx === 0 && frNow && frNow.rank != null) $('rank').value = frNow.rank;
@@ -84,14 +84,14 @@ function applySession(idx) {
   const btn = $('publish'), ps = $('poststate'), hid = $('hidden');
   if (ex) {
     $('body').value = ex.body || '';
-    btn.textContent = 'Mettre a jour la session';
+    btn.textContent = 'Update session';
     hid.checked = ex.hidden; hid.disabled = true;
-    ps.innerHTML = `Deja publie (${ex.hidden ? 'cache' : 'public'}). Le bouton met a jour image + texte.`;
+    ps.innerHTML = `Already published (${ex.hidden ? 'hidden' : 'public'}). The button updates image + text.`;
   } else {
     $('body').value = '';
-    btn.textContent = 'Publier la session';
+    btn.textContent = 'Publish session';
     hid.disabled = false;
-    ps.textContent = 'Pas encore publie. Le bouton cree le post.';
+    ps.textContent = 'Not published yet. The button creates the post.';
   }
   postScene('setup');
 }
@@ -99,8 +99,8 @@ function applySession(idx) {
 let frNow = null;
 async function init() {
   const info = await window.studio.init();
-  if (!info || !info.ok) { $('status').textContent = 'Erreur init : ' + (info && info.error); return; }
-  $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token indisponible (autocomplete off)' : '');
+  if (!info || !info.ok) { $('status').textContent = 'Init error: ' + (info && info.error); return; }
+  $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token unavailable (autofill off)' : '');
   frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
@@ -209,28 +209,28 @@ async function companionFrames(st) {
         bytes += b64.length * 0.75;
         if (!disp) { const ds = displaySize(f.width, f.height); disp = makeAnimEncoder(ds.w, ds.h, q); }
         disp.add(enc);
-        if (i % 4 === 0) st.textContent = `Generation de la variante compagnon… ${i + 1}/${N} (qualite ${Math.round(q * 100)}, ${(bytes / 1048576).toFixed(1)} Mo + apercu ${(disp.bytes / 1048576).toFixed(1)} Mo)`;
+        if (i % 4 === 0) st.textContent = `Generating companion variant… ${i + 1}/${N} (quality ${Math.round(q * 100)}, ${(bytes / 1048576).toFixed(1)} MB + preview ${(disp.bytes / 1048576).toFixed(1)} MB)`;
         if (bytes > MAX_WEBP || disp.bytes > MAX_WEBP) break;
       }
     } finally { await window.studio.sceneEnd(); }
     if (bytes <= MAX_WEBP && disp && disp.bytes <= MAX_WEBP && frames.length === N) {
       return { ok: true, frames, displayFrames: disp.frames, delayMs: Math.round(1000 / begin.fps), bytes };
     }
-    st.textContent = `Trop lourd (${(bytes / 1048576).toFixed(1)} Mo), nouvel essai en qualite plus basse…`;
+    st.textContent = `Too heavy (${(bytes / 1048576).toFixed(1)} MB), retrying at lower quality…`;
   }
-  return { ok: false, error: 'la variante compagnon depasse 8 Mo meme en qualite basse' };
+  return { ok: false, error: 'the companion variant exceeds 8 MB even at low quality' };
 }
 
 async function publish() {
   const btn = $('publish'); btn.disabled = true;
-  const st = $('status'); st.textContent = 'Generation des frames…';
+  const st = $('status'); st.textContent = 'Generating frames…';
   if (rafId) cancelAnimationFrame(rafId), rafId = null;
 
   const d = cardData();
   let frames = [], displayFrames = null, delayMs = Math.round(1000 / FPS);
   if (cardStyle === 'companion') {
     const r = await companionFrames(st);
-    if (!r.ok) { st.textContent = 'Erreur : ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; return; }
+    if (!r.ok) { st.textContent = 'Error: ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; return; }
     frames = r.frames; displayFrames = r.displayFrames; delayMs = r.delayMs;
   } else {
     PrometheeCard.resetLayout();
@@ -240,11 +240,11 @@ async function publish() {
       PrometheeCard.drawFrame(ctx, d, { tierImg }, makeCanvas, i / FPS, T, styleLayout());
       frames.push(cv.toDataURL('image/webp', QUALITY).split(',')[1]);
       disp.add(cv);
-      if (i % 6 === 0) { st.textContent = `Generation des frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
+      if (i % 6 === 0) { st.textContent = `Generating frames… ${i + 1}/${N}`; await new Promise(r => setTimeout(r)); }
     }
     displayFrames = disp.frames;
   }
-  st.textContent = 'Assemblage et publication…';
+  st.textContent = 'Assembling and publishing…';
 
   const res = await window.studio.publish({
     sessionId: current.sessionId, frames, displayFrames, delayMs,
@@ -253,16 +253,16 @@ async function publish() {
 
   if (res.ok) {
     posts[current.sessionId] = { eventId: res.eventId, body: $('body').value, hidden: $('hidden').checked };
-    const verb = res.mode === 'edit' ? 'Mis a jour' : (res.hidden ? 'Publie (cache)' : 'Publie (public)');
-    st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} Mo (apercu feed ${res.displayBytes ? (res.displayBytes / 1048576).toFixed(2) + ' Mo' : 'aucun'})\nservi: ${res.servedType}, anime: ${res.servedAnimated ? 'oui' : 'NON'}, identique: ${res.servedIdentical ? 'oui' : 'NON'}\nevent: ${res.eventId || '(n/a)'}`;
+    const verb = res.mode === 'edit' ? 'Updated' : (res.hidden ? 'Published (hidden)' : 'Published (public)');
+    st.textContent = `${verb} · ${(res.bytes / 1048576).toFixed(2)} MB (feed preview ${res.displayBytes ? (res.displayBytes / 1048576).toFixed(2) + ' MB' : 'none'})\nserved: ${res.servedType}, animated: ${res.servedAnimated ? 'yes' : 'NO'}, identical: ${res.servedIdentical ? 'yes' : 'NO'}\nevent: ${res.eventId || '(n/a)'}`;
     const a = document.createElement('a'); a.href = res.url; a.textContent = res.url; a.target = '_blank';
     st.appendChild(document.createElement('br')); st.appendChild(a);
     applySession(parseInt($('sessionSel').value, 10)); // refresh labels/state
   } else {
-    st.textContent = 'Erreur : ' + res.error;
+    st.textContent = 'Error: ' + res.error;
   }
   t0 = performance.now(); loop(); btn.disabled = false;
 }
 
 $('publish').addEventListener('click', publish);
-init().catch(e => { $('status').textContent = 'Erreur : ' + e.message; });
+init().catch(e => { $('status').textContent = 'Error: ' + e.message; });

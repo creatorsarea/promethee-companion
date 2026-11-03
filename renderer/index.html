@@ -35,46 +35,46 @@ a{color:var(--orange);word-break:break-all;}
 <body>
 <div class="panel">
   <h1>Card Studio</h1>
-  <p class="v" id="appv">Chargement…</p>
+  <p class="v" id="appv">Loading…</p>
 
   <label>Session</label>
   <select id="sessionSel"></select>
   <div class="sess" id="sessbox" style="margin-top:10px;">…</div>
   <div class="status" id="poststate" style="margin-top:6px;"></div>
 
-  <label>Pseudo</label>
+  <label>Handle</label>
   <input id="handle" value="@zaros"/>
 
-  <label>Style de carte</label>
+  <label>Card style</label>
   <select id="cardStyle">
-    <option value="classic">Classique</option>
-    <option value="centre">Centre (temps en grand, rang en fond)</option>
-    <option value="companion">Compagnon (barre des taches)</option>
+    <option value="classic">Classic</option>
+    <option value="centre">Centre (big time, rank as background)</option>
+    <option value="companion">Companion (taskbar)</option>
   </select>
 
-  <label>Tier</label>
+  <label>League</label>
   <select id="tier"></select>
   <div class="row">
-    <div><label>Rang</label><input id="rank" type="number" value="1"/></div>
-    <div><label>Streak (jours)</label><input id="streak" type="number" value="0"/></div>
+    <div><label>Rank</label><input id="rank" type="number" value="1"/></div>
+    <div><label>Streak (days)</label><input id="streak" type="number" value="0"/></div>
   </div>
   <div class="row">
-    <div><label>Places gagnees</label><input id="places" type="number" value="0"/></div>
-    <div><label>FR gagnes</label><input id="fr" type="number" value="0"/></div>
+    <div><label>Places gained</label><input id="places" type="number" value="0"/></div>
+    <div><label>FR gained</label><input id="fr" type="number" value="0"/></div>
   </div>
 
-  <label>Texte du post</label>
-  <textarea id="body" placeholder="Ecris le texte de ton post de session…"></textarea>
+  <label>Post text</label>
+  <textarea id="body" placeholder="Write the text of your session post…"></textarea>
 
-  <div class="chk"><input type="checkbox" id="hidden" checked/><label for="hidden" style="margin:0;text-transform:none;letter-spacing:0;font-family:'DMSans';font-size:12.5px;">Publier en cache (test, invisible pour les autres)</label></div>
+  <div class="chk"><input type="checkbox" id="hidden" checked/><label for="hidden" style="margin:0;text-transform:none;letter-spacing:0;font-family:'DMSans';font-size:12.5px;">Publish hidden (test, invisible to others)</label></div>
 
-  <button id="publish" disabled>Publier la session</button>
+  <button id="publish" disabled>Publish session</button>
   <div class="status" id="status"></div>
 </div>
 
 <div class="stage">
-  <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Apercu variante compagnon" hidden></iframe></div>
-  <div class="status" id="hint">Apercu anime en direct. Le rendu final (WebP) est genere au moment de publier.</div>
+  <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Companion variant preview" hidden></iframe></div>
+  <div class="status" id="hint">Live animated preview. The final WebP is generated when you publish.</div>
 </div>
 
 <script src="card.js"></script>

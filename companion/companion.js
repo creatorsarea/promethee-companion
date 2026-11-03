@@ -58,19 +58,19 @@
     var key, html;
     if (v.mode === 'alerte' && v.alert) {
       key = 'alert:' + v.alert.returnTo;
-      html = '<div class="back">Retourne sur <span id="cdApp"></span></div><div class="cd" id="cd">10.0</div>';
+      html = '<div class="back">Back to <span id="cdApp"></span></div><div class="cd" id="cd">10.0</div>';
     } else if (!v.stats) {
       key = 'open';
-      html = '<button class="openbtn" id="openBtn" type="button">Ouvrir l\'app</button>';
+      html = '<button class="openbtn" id="openBtn" type="button">Open app</button>';
     } else {
       var s = v.stats;
       var ch = s.challenge && !celebrated[s.challenge.id] ? s.challenge : null;
       key = 'stats:' + JSON.stringify([s.switches, s.malus, s.focus, s.late, v.paused, ch && ch.id, ch && ch.xp]);
-      var warn = s.late ? '<span class="warnbadge">!<span class="tt">Compagnon lancé après le début de la session : l\'inactivité d\'avant son lancement n\'est pas connue, le focus peut différer un peu de Promethee.</span></span>' : '';
-      html = (ch ? '<div class="chal" id="chal"><span class="chal-k">Défi</span><span class="chal-xp">+' + ch.xp + ' XP</span><span class="chal-t" id="chalT">--:--</span></div>' : '') +
-        (v.paused ? '<span class="paused-tag">En pause</span>' : '') + '<div class="dash">' +
+      var warn = s.late ? '<span class="warnbadge">!<span class="tt">Companion started after the session began: idle time before it launched is unknown, so focus may differ slightly from Promethee.</span></span>' : '';
+      html = (ch ? '<div class="chal" id="chal"><span class="chal-k">Challenge</span><span class="chal-xp">+' + ch.xp + ' XP</span><span class="chal-t" id="chalT">--:--</span></div>' : '') +
+        (v.paused ? '<span class="paused-tag">Paused</span>' : '') + '<div class="dash">' +
         '<div class="stat" id="statSw"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div>' +
-        '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">malus</span></div>' +
+        '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">penalty</span></div>' +
         '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>';
     }
     if (key === boxKey) return;

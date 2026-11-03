@@ -162,7 +162,7 @@
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
     const frn = parseInt(data.fr, 10);
     const frTxt = Number.isFinite(frn) ? (frn >= 0 ? '+' : '') + Math.round(frn * k) : '—';
-    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' J'], ['XP', data.xp], ['FOCUS RATE', frTxt]];
+    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' D'], ['XP', data.xp], ['FOCUS RATE', frTxt]];
     const segw = (W - 180) / items.length;
     items.forEach((it, i) => {
       const xx = 90 + segw * i + 32;
@@ -207,7 +207,7 @@
     ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(90, 112); ctx.lineTo(W - 90, 112); ctx.stroke();
 
-    tx(ctx, ex, ey + EM * 0.52, 'LIGUE ' + data.tierName.toUpperCase(), '600 42px DMSans', CREAM, 'center', 'alphabetic', 1);
+    tx(ctx, ex, ey + EM * 0.52, 'LEAGUE ' + data.tierName.toUpperCase(), '600 42px DMSans', CREAM, 'center', 'alphabetic', 1);
     const rk = 'RANK #' + data.rank, frk = '26px DMMono', wrk = measure(ctx, rk, frk, 4);
     const ry0 = ey + EM * 0.52 + 58;
     roundRect(ctx, ex - wrk / 2 - 20, ry0, wrk + 40, 46, 23, 'rgba(255,255,255,.08)');
@@ -247,7 +247,7 @@
     // rail
     ctx.strokeStyle = 'rgba(255,255,255,.07)';
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(railRight, rail); ctx.stroke();
-    const streakVal = Math.round((parseInt(data.streak, 10) || 0) * k) + ' J';
+    const streakVal = Math.round((parseInt(data.streak, 10) || 0) * k) + ' D';
     let items = [['STREAK', streakVal], ['XP', data.xp], ['SESSION', data.session]];
     if (Array.isArray(L.railItems)) items = items.filter(it => L.railItems.includes(it[0]));
     const segw = (railRight - 90) / items.length;

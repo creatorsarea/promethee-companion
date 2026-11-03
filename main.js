@@ -358,18 +358,18 @@ function buildTrayMenu() {
   const visible = compWin && compWin.isVisible();
   const size = cfg.companionSize || 'M';
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Ouvrir Card Studio', click: openStudio },
+    { label: 'Open Card Studio', click: openStudio },
     { type: 'separator' },
-    { label: visible ? 'Masquer le compagnon' : 'Afficher le compagnon', click: () => toggleCompanion() },
-    { label: 'Taille', submenu: [['S', 'Petit'], ['M', 'Moyen'], ['L', 'Grand']].map(([k, l]) => ({
+    { label: visible ? 'Hide companion' : 'Show companion', click: () => toggleCompanion() },
+    { label: 'Size', submenu: [['S', 'Small'], ['M', 'Medium'], ['L', 'Large']].map(([k, l]) => ({
       label: l, type: 'radio', checked: size === k,
       click: () => { patchConfig({ companionSize: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
     })) },
-    { label: 'Remettre en bas à droite', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } },
+    { label: 'Reset position (bottom right)', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } },
     { type: 'separator' },
-    { label: 'Lancer au démarrage de Windows', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
+    { label: 'Launch at Windows startup', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
     { type: 'separator' },
-    { label: 'Quitter', click: () => { app.isQuitting = true; app.quit(); } },
+    { label: 'Quit', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
 }
 

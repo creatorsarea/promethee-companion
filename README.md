@@ -1,12 +1,12 @@
 # Promethee Companion
 
-Un petit compagnon au-dessus de la barre des taches de Windows qui suit ta session
-Promethee en direct, plus **Card Studio** (ouvert au clic sur le compagnon) pour
-generer et publier la carte de fin de session en WebP anime.
+A small companion above the Windows taskbar that tracks your Promethee session live, plus
+**Card Studio** (opened by clicking the companion) to generate and publish the end-of-session
+card as an animated WebP.
 
-## Installation
+## Install
 
-Node 18+ requis.
+Node 18+ required.
 
 ```
 cd companion
@@ -14,59 +14,65 @@ npm install
 npm start
 ```
 
-Au premier lancement, l'app s'inscrit au demarrage de Windows (desactivable depuis
-l'icone dans la zone de notification).
+On first launch the app registers itself to start with Windows (can be turned off from the
+tray icon).
 
-## Le compagnon
+## The companion
 
-| Etat | Quand | Affichage |
+| State | When | Display |
 |---|---|---|
-| Veille | pas de session (ou session en pause) | il dort, Zzz |
-| Focus | session en cours | coucou une fois, box : switch, malus, focus |
-| Alerte | tu as quitte ton app | flammes, "Retourne sur <app>" + decompte |
+| Idle | no session (or session paused) | sleeping, Zzz |
+| Focus | session running | waves once, box: switches, penalty, focus |
+| Alert | you left your app | flames, "Back to <app>" + countdown |
 
-- **Clic** : ouvre Card Studio. **Glisser** : deplace le compagnon (position memorisee).
-- **Icone tray** : afficher/masquer, taille (petit/moyen/grand), remettre en bas a
-  droite, lancement au demarrage, quitter.
-- La fenetre ne prend jamais le focus : Promethee continue de voir ton app.
+- **Click**: opens Card Studio. **Drag**: moves the companion (position is remembered).
+- **Tray icon**: show/hide, size (small/medium/large), reset position (bottom right),
+  launch at startup, quit.
+- The window never takes focus, so Promethee keeps seeing your app.
 
-## Les chiffres
+## The numbers
 
-Tout est calcule comme Promethee, a partir de sa DB locale (`promethee.db` + `-wal`,
-lue avec sql.js dans un thread a part, seulement quand elle change) :
+Everything is computed like Promethee, from its local DB (`promethee.db` + `-wal`, read with
+sql.js in a separate thread, only when it changes):
 
-- **Switch** : segments "durables" (>= 2 captures de 10s), `switch = segments - 1`,
-  avec les memes filtres d'apps (explorer, dwm, ...).
-- **Malus** : `min(35, switchs par heure x 2)`.
-- **Focus** : `100 - malus - idle`, avec `idle = part inactive x 50`. L'inactivite
-  n'est pas dans la DB de Promethee : le compagnon l'echantillonne lui-meme toutes les
-  15s (meme API, meme seuil de 120s, meme fusion des blocs). Un **!** apparait a cote
-  du focus si le compagnon a ete lance apres le debut de la session.
-- **Alerte** : la detection de l'app au premier plan (temps reel) sert seulement a
-  afficher/cacher l'alerte. Le decompte vise le moment ou Promethee comptera le
-  switch (2e capture sur la nouvelle app), exact des que la DB a vu le detour.
+- **Switches**: "durable" segments (>= 2 samples of 10 s), `switches = segments - 1`, with the
+  same app filters (explorer, dwm, ...).
+- **Penalty**: `min(35, switches per hour x 2)`.
+- **Focus**: `100 - penalty - idle`, with `idle = idle share x 50`. Idle time is not in
+  Promethee's DB: the companion samples it itself every 15 s (same API, same 120 s threshold,
+  same block merging). A **!** appears next to focus if the companion was started after the
+  session began.
+- **Alert**: foreground app detection (real time) only decides whether the alert is shown.
+  The countdown targets the moment Promethee will count the switch (2nd sample on the new app),
+  exact as soon as the DB has seen the detour.
 
 ## Card Studio
 
-- **Donnees** : derniere session lue dans la DB locale.
-- **Emblemes / polices** : lus dans `...\Local\Promethee\app-<derniere version>\resources\assets\`.
-- **Token** : lu et dechiffre en local depuis `session.bin` (DPAPI + AES-GCM), jamais
-  journalise ni envoye ailleurs. S'il est expire, ouvre Promethee puis reessaie.
-- **Publication** : upload du WebP brut (et de sa copie d'affichage `.d.webp` si le grand cote
-  depasse 1200 px) puis `publish_feed_session`. "Publier en cache" passe par
-  `publish_feed_session_v2` avec l'audience `only_me`, comme l'app pour un post prive avec image.
-- **Styles de carte** (liste deroulante) : Classique, Centre (temps de session en grand au milieu,
-  embleme du rang en fond, rang en grand au-dessus du bandeau STREAK / XP / FOCUS RATE, sans nom de ligue, variation de places ni numero de session) et Compagnon.
-- **Pauses** : depuis Promethee 1.3.34, les evenements de fenetre enregistres pendant une pause
-  (`sessions.break_log`, plus la pause en cours) sont ignores pour les changements d'app, les
-  apps principales et le temps d'appel. Le suivi live fait pareil.
-- Places gagnees et FR gagnes ne sont pas dans la DB locale : saisis-les.
-- Encodage (`renderer/renderer.js`) : `FPS`, `T`, `QUALITY`. Baisse-les si le fichier
-  depasse 8 Mo.
+- **Data**: last sessions read from the local DB.
+- **Emblems / fonts**: read from `...\Local\Promethee\app-<latest version>\resources\assets\`.
+- **Token**: read and decrypted locally from `session.bin` (DPAPI + AES-GCM), never logged or
+  sent anywhere else. If it is expired, open Promethee and retry.
+- **Publishing**: uploads the raw WebP (and its `.d.webp` display copy if the long edge exceeds
+  1200 px), then calls `publish_feed_session`. "Publish hidden" goes through
+  `publish_feed_session_v2` with the `only_me` audience, like the app does for a private post
+  with an image.
+- **Card styles** (dropdown): Classic, Centre (big session time in the middle, rank emblem as
+  background, big rank above the STREAK / XP / FOCUS RATE strip, no league name, place change
+  or session id) and Companion.
+- **Pauses**: since Promethee 1.3.34, window events recorded during a pause
+  (`sessions.break_log`, plus the current pause) are ignored for app switches, top apps and call
+  time. The live tracker does the same.
+- Encoding (`renderer/renderer.js`): `FPS`, `T`, `QUALITY`. Lower them if the file exceeds 8 MB.
 
+## Automatic card data
 
-## Donnees automatiques de la carte
-- Auto : duree, XP, streak (calcule comme l'app, avec les jours actifs), stats compagnon, ligue et rang dans la ligue (RPC lecture seule `get_my_fr_state`, token lu localement), FR gagnes (difference de score entre deux releves, historique local `fr-history.json`, releve toutes les 10 min).
-- Manuel : places gagnees (retire du style Centre), et rang/FR des anciennes sessions sans releve.
-- Cle publique anon Supabase : plus codee en dur, lue dans l'app.asar de Promethee installe (lib/anonkey.js, en-tete asar + bundle principal seulement) et mise en cache dans config.json par version.
-- Note : `rank_snapshots` de la base locale n'est PAS le rang de ligue (petites valeurs type 18, 53), il n'est plus utilise pour le style Centre.
+- **Automatic**: duration, XP, streak (computed like the app, from active days), companion stats,
+  league and rank in the league (read-only RPC `get_my_fr_state`, token read locally), FR gained
+  (score difference between two readings, local history `fr-history.json`, one reading every
+  10 min).
+- **Manual**: places gained (not shown in the Centre style), and rank/FR of older sessions that
+  have no reading.
+- **Public anon key**: no longer hardcoded, read from the installed Promethee `app.asar`
+  (`lib/anonkey.js`, asar header + main bundle only) and cached in `config.json` per app version.
+- **Note**: the local `rank_snapshots` table is NOT the league rank (small values like 18, 53),
+  so it is no longer used for the Centre style.
