@@ -83,3 +83,14 @@ Card Studio shows an optional "Follow @zaros" button (hidden if you already foll
 author). It only acts on click, with your own token, through `follow_or_request_v1` (same RPC as the
 app; a private account receives a follow request instead). Nothing is followed automatically.
 To use it for your own fork, change `AUTHOR` in `lib/social.js`.
+
+## Stats section
+
+Under the preview, Card Studio shows your stats and a comparison with other people.
+
+- **Local (no network)**: last 7 days vs the previous 7, streak (frozen days bridge the chain but are
+  not counted, like `user_profile.current_streak`), longest session, best hour, best day, 14-day chart.
+- **Comparison (last 7 days of focus)**: "League neighbours" (`get_fr_tier_board_window`, 5 above and
+  below you) or "People I follow" (`get_following_list`, then `get_user_focus_history_local_v1` per
+  account, 15 accounts max, 4 requests at a time). Read-only, same RPCs as the app, your own token.
+  Results are cached for 10 minutes; "Refresh" forces a reload. Names are rendered as plain text.

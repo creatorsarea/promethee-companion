@@ -10,6 +10,7 @@ const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const fr = require('./lib/fr');
 const social = require('./lib/social');
+const stats = require('./lib/stats');
 const { findAnonKey, isAnon } = require('./lib/anonkey');
 const { setAnonKey } = require('./lib/api');
 // Public anon key: read from the installed Promethee (cached per app version in config.json).
@@ -104,6 +105,16 @@ ipcMain.handle('studio:init', async () => {
   };
 });
 
+// Stats section: local numbers (no network) and an on-demand comparison with other people
+ipcMain.handle('studio:stats', async () => {
+  try { return { ok: true, stats: await stats.localStats(resolve()) }; } catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('studio:compare', async (_e, { mode, force } = {}) => {
+  try {
+    const paths = resolve(); ensureAnon(paths); const { token, uid } = loadToken(paths);
+    return { ok: true, data: await stats.compare(token, uid, mode === 'following' ? 'following' : 'league', !!force) };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
 // Optional "follow the author" button (explicit click only)
 ipcMain.handle('studio:followState', async () => {
   try { const paths = resolve(); ensureAnon(paths); const { token, uid } = loadToken(paths); return { ok: true, state: await social.followState(token, uid), handle: social.AUTHOR.handle }; }

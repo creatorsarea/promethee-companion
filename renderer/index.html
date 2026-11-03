@@ -19,6 +19,35 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);
 .chk input{width:auto;}
 button.ghost{margin-top:8px;background:transparent;color:var(--orange);border:1px solid var(--orange);padding:9px;font-size:12.5px;}
 .follow{transition:opacity .9s ease;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--dim);line-height:1.5;}
+
+.stats[hidden]{display:none;}
+.stats{margin-top:18px;border-top:1px solid #2a211c;padding-top:16px;}
+.stats h2{margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-family:'DMMono',monospace;font-weight:500;}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.tile{background:#0c0a09;border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+.tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:'DMMono',monospace;}
+.tile .v{margin-top:4px;font-size:19px;color:var(--cream);font-family:'DMSans',sans-serif;font-weight:700;}
+.tile .s{margin-top:2px;font-size:11px;color:var(--dim);font-family:'DMMono',monospace;}
+.up{color:#7bd88f}.down{color:#e07a6a}
+.bars{display:flex;align-items:flex-end;gap:5px;height:84px;margin-top:12px;}
+.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;}
+.bars .b i{display:block;width:100%;min-height:2px;background:var(--orange);border-radius:3px 3px 0 0;opacity:.85;}
+.bars .b span{font-size:9.5px;color:var(--dim);font-family:'DMMono',monospace;}
+.bars .b.today i{opacity:1;}
+.cmp{margin-top:18px;}
+.cmp .bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.cmp .tab{margin:0;width:auto;padding:6px 12px;font-size:12px;background:transparent;color:var(--dim);border:1px solid var(--line);}
+.cmp .tab.on{color:var(--cream);border-color:var(--orange);}
+.cmp .refresh{margin:0 0 0 auto;width:auto;padding:6px 10px;font-size:12px;background:transparent;color:var(--dim);border:1px solid var(--line);}
+.row2{display:grid;grid-template-columns:22px minmax(90px,200px) 1fr 74px;align-items:center;gap:10px;padding:4px 0;font-size:12.5px;color:var(--cream);font-family:'DMSans',sans-serif;}
+.row2 .n{color:var(--dim);font-family:'DMMono',monospace;font-size:11px;}
+.row2 .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row2 .tr{height:8px;background:#1a1512;border-radius:4px;overflow:hidden;}
+.row2 .tr i{display:block;height:100%;background:#6b5a4d;border-radius:4px;}
+.row2 .t{text-align:right;color:var(--dim);font-family:'DMMono',monospace;font-size:11.5px;}
+.row2.me .nm{color:var(--orange);font-weight:700;}
+.row2.me .tr i{background:var(--orange);}
+.cmp .note{margin-top:6px;font-size:11px;color:var(--dim);font-family:'DMMono',monospace;}
 .follow[hidden]{display:none;}
 .follow.fade{opacity:0;}
 .follow button.ghost{margin-top:0;width:auto;padding:8px 14px;white-space:nowrap;}
@@ -82,6 +111,21 @@ a{color:var(--orange);word-break:break-all;}
     <span id="followText">Enjoying Card Studio? Follow the author on Promethee.</span>
     <button id="followBtn" class="ghost" type="button">Follow @zaros</button>
   </div>
+  <section class="stats" id="stats" hidden>
+    <h2>Your stats</h2>
+    <div class="tiles" id="tiles"></div>
+    <div class="bars" id="bars"></div>
+    <div class="cmp">
+      <h2>Compare (last 7 days)</h2>
+      <div class="bar">
+        <button class="tab on" id="tabLeague" type="button">League neighbours</button>
+        <button class="tab" id="tabFollowing" type="button">People I follow</button>
+        <button class="refresh" id="cmpRefresh" type="button">Refresh</button>
+      </div>
+      <div id="cmpList"></div>
+      <div class="note" id="cmpNote"></div>
+    </div>
+  </section>
 </div>
 
 <script src="card.js"></script>

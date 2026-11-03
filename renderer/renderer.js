@@ -112,6 +112,57 @@ async function initFollow() {
   });
 }
 
+// ---- Stats section: local numbers + on-demand comparison with other people ----
+const fmtH = sec => { const m = Math.round((sec || 0) / 60), h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
+const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function tile(k, v, s, cls) { const t = el('div', 'tile'); t.append(el('div', 'k', k), el('div', 'v', v)); const x = el('div', 's' + (cls ? ' ' + cls : ''), s || ''); t.append(x); return t; }
+
+async function initStats() {
+  let r; try { r = await window.studio.stats(); } catch { return; }
+  if (!r || !r.ok) return;
+  const st = r.stats, tiles = $('tiles'); tiles.replaceChildren();
+  const diff = st.weekSec - st.prevWeekSec, pct = st.prevWeekSec ? Math.round((diff / st.prevWeekSec) * 100) : null;
+  tiles.append(
+    tile('Last 7 days', fmtH(st.weekSec), pct == null ? `${st.sessionsWeek} sessions` : `${diff >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs prev week`, pct == null ? '' : (diff >= 0 ? 'up' : 'down')),
+    tile('Streak', `${st.streak} d`, `best ${st.maxStreak} d · ${st.activeDays30}/30 active`),
+    tile('Longest session', st.longest ? fmtH(st.longest.sec) : '-', st.longest ? fmtDay(st.longest.day) : ''),
+    tile('Best hour', st.bestHour == null ? '-' : `${String(st.bestHour).padStart(2, '0')}:00`, st.bestDay ? `best day ${fmtH(st.bestDay.sec)} · ${fmtDay(st.bestDay.day)}` : ''));
+  const bars = $('bars'); bars.replaceChildren();
+  const max = Math.max(1, ...st.series.map(x => x.sec));
+  st.series.forEach((x, i) => {
+    const b = el('div', 'b' + (i === st.series.length - 1 ? ' today' : '')), bar = el('i');
+    bar.style.height = Math.max(2, Math.round((x.sec / max) * 62)) + 'px'; b.title = `${fmtDay(x.day)}: ${fmtH(x.sec)}`;
+    b.append(bar, el('span', '', x.day.slice(8))); bars.append(b);
+  });
+  $('stats').hidden = false;
+  loadCompare('league', false);
+}
+
+let cmpMode = 'league';
+async function loadCompare(mode, force) {
+  cmpMode = mode;
+  $('tabLeague').classList.toggle('on', mode === 'league'); $('tabFollowing').classList.toggle('on', mode === 'following');
+  const list = $('cmpList'), note = $('cmpNote'); list.replaceChildren(el('div', 'note', 'Loading…')); note.textContent = '';
+  let r; try { r = await window.studio.compare(mode, force); } catch (e) { r = { ok: false, error: String(e) }; }
+  if (mode !== cmpMode) return; // a newer tab was selected meanwhile
+  list.replaceChildren();
+  if (!r || !r.ok) { list.append(el('div', 'note', 'Unavailable: ' + (r && r.error ? r.error : 'unknown error'))); return; }
+  const rows = r.data.rows, max = Math.max(1, ...rows.map(x => x.weekSec));
+  if (rows.length < 2) { list.append(el('div', 'note', mode === 'following' ? 'You do not follow anybody yet.' : 'No neighbours found in your league.')); return; }
+  rows.forEach((u, i) => {
+    const row = el('div', 'row2' + (u.isMe ? ' me' : '')), tr = el('div', 'tr'), fill = el('i');
+    fill.style.width = Math.max(1, Math.round((u.weekSec / max) * 100)) + '%'; tr.append(fill);
+    row.append(el('div', 'n', String(i + 1)), el('div', 'nm', u.name), tr, el('div', 't', fmtH(u.weekSec)));
+    list.append(row);
+  });
+  const me = rows.findIndex(u => u.isMe) + 1;
+  note.textContent = `You are #${me} of ${rows.length}` + (r.data.note ? ' · ' + r.data.note : '');
+}
+$('tabLeague').addEventListener('click', () => loadCompare('league', false));
+$('tabFollowing').addEventListener('click', () => loadCompare('following', false));
+$('cmpRefresh').addEventListener('click', () => loadCompare(cmpMode, true));
+
 async function init() {
   const info = await window.studio.init();
   if (!info || !info.ok) { $('status').textContent = 'Init error: ' + (info && info.error); return; }
@@ -144,6 +195,7 @@ async function init() {
   $('publish').disabled = false;
   loop();
   initFollow();
+  initStats();
 }
 
 // Render the companion variant frame by frame (offscreen window, virtual clock) and encode
