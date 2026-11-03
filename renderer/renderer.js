@@ -140,27 +140,26 @@ function renderStats(st) {
   });
 }
 
-let cmpMode = 'league';
+let cmpMode = 'global';
 async function loadCompare(mode, force) {
   cmpMode = mode;
-  $('tabLeague').setAttribute('aria-pressed', mode === 'league'); $('tabFollowing').setAttribute('aria-pressed', mode === 'following');
+  $('tabGlobal').setAttribute('aria-pressed', mode === 'global'); $('tabFollowing').setAttribute('aria-pressed', mode === 'following');
   const list = $('cmpList'), note = $('cmpNote'); list.replaceChildren(el('div', 'cmpnote', 'Loading…')); note.textContent = '';
   let r; try { r = await window.studio.compare(mode, force); } catch (e) { r = { ok: false, error: String(e) }; }
   if (mode !== cmpMode) return; // another tab was selected meanwhile
   list.replaceChildren();
   if (!r || !r.ok) { list.append(el('div', 'cmpnote', 'Could not load this list: ' + (r && r.error ? r.error : 'unknown error'))); return; }
   const rows = r.data.rows, max = Math.max(1, ...rows.map(x => x.weekSec));
-  if (rows.length < 2) { list.append(el('div', 'cmpnote', mode === 'following' ? 'You do not follow anybody yet.' : 'No neighbours found in your league.')); return; }
+  if (rows.length < 2) { list.append(el('div', 'cmpnote', mode === 'following' ? 'You do not follow anybody yet.' : 'Nobody to show yet.')); return; }
   rows.forEach((u, i) => {
     const row = el('div', 'cmprow' + (u.isMe ? ' me' : '')), tr = el('div', 'tr'), fill = el('i');
     fill.style.width = Math.max(1, Math.round((u.weekSec / max) * 100)) + '%'; tr.append(fill);
-    row.append(el('div', 'n', String(i + 1)), el('div', 'nm', u.name), tr, el('div', 't', fmtH(u.weekSec)));
+    row.append(el('div', 'n', String(u.pos ?? i + 1)), el('div', 'nm', u.name), tr, el('div', 't', fmtH(u.weekSec)));
     list.append(row);
   });
-  const me = rows.findIndex(u => u.isMe) + 1;
-  note.textContent = `You are #${me} of ${rows.length}` + (r.data.note ? `, ${r.data.note}` : '');
+  note.textContent = r.data.note ? r.data.note[0].toUpperCase() + r.data.note.slice(1) : '';
 }
-$('tabLeague').addEventListener('click', () => loadCompare('league', false));
+$('tabGlobal').addEventListener('click', () => loadCompare('global', false));
 $('tabFollowing').addEventListener('click', () => loadCompare('following', false));
 $('cmpRefresh').addEventListener('click', () => loadCompare(cmpMode, true));
 
@@ -180,7 +179,7 @@ document.querySelectorAll('#tabs [data-tab]').forEach(t => t.addEventListener('c
 window.addEventListener('resize', () => { const cur = document.querySelector('#tabs [aria-selected="true"]'); if (cur) showTab(cur.dataset.tab, false); });
 
 // ---- boot: loading screen, then everything is ready at once ----
-const STEPS = ['Reading your sessions', 'Working out your stats', 'Checking the league'];
+const STEPS = ['Reading your sessions', 'Working out your stats', 'Comparing with everyone'];
 async function boot() {
   const t0b = Date.now(), msg = $('loadMsg');
   msg.textContent = STEPS[0];
@@ -190,10 +189,10 @@ async function boot() {
   msg.textContent = STEPS[1];
   const statsR = await window.studio.stats().catch(() => null);
   msg.textContent = STEPS[2];
-  await window.studio.compare('league', false).catch(() => {});   // warms the 10 min cache
+  await window.studio.compare('global', false).catch(() => {});   // warms the 10 min cache
   await followP;
   if (statsR && statsR.ok) renderStats(statsR.stats);
-  loadCompare('league', false);
+  loadCompare('global', false);
   // keep the screen up long enough to read the offer (and the thank-you after a click)
   while (Date.now() < Math.max(t0b + 2200, lastFollowClick ? lastFollowClick + 2800 : 0)) await sleep(150);
   if (followInfo) { $('chipText').textContent = ''; $('chip').hidden = false; }

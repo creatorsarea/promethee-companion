@@ -112,7 +112,7 @@ ipcMain.handle('studio:stats', async () => {
 ipcMain.handle('studio:compare', async (_e, { mode, force } = {}) => {
   try {
     const paths = resolve(); ensureAnon(paths); const { token, uid } = loadToken(paths);
-    return { ok: true, data: await stats.compare(token, uid, mode === 'following' ? 'following' : 'league', !!force) };
+    return { ok: true, data: await stats.compare(token, uid, mode === 'following' ? 'following' : 'global', !!force) };
   } catch (e) { return { ok: false, error: e.message }; }
 });
 // Optional "follow the author" button (explicit click only)

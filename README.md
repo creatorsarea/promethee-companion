@@ -97,7 +97,10 @@ Under the preview, Card Studio shows your stats and a comparison with other peop
 
 - **Local (no network)**: last 7 days vs the previous 7, streak (frozen days bridge the chain but are
   not counted, like `user_profile.current_streak`), longest session, best hour, best day, 14-day chart.
-- **Comparison (last 7 days of focus)**: "League neighbours" (`get_fr_tier_board_window`, 5 above and
-  below you) or "People I follow" (`get_following_list`, then `get_user_focus_history_local_v1` per
-  account, 15 accounts max, 4 requests at a time). Read-only, same RPCs as the app, your own token.
+- **Comparison**: "Everyone, this week" ranks the members of the app's weekly board
+  (`get_public_leaderboard_weekly_offset`, 500 first by XP, the largest list the app itself fetches) by
+  focus time. It always shows 10 rows: the top 10 if you are in it, otherwise the 10 positions around
+  yours (25th shows 20th to 29th). "People I follow" (`get_following_list`, then
+  `get_user_focus_history_local_v1` per account, 15 accounts max, 4 requests at a time) ranks the
+  accounts you follow by focus over the last 7 days. Read-only, same RPCs as the app, your own token.
   Results are cached for 10 minutes; "Refresh" forces a reload. Names are rendered as plain text.
