@@ -1,6 +1,6 @@
 'use strict';
 // Promethee Companion: a small mascot above the taskbar that shows the live session
-// state (switches, switch malus, focus score computed like Promethee) and warns on an
+// state (switches, switch penalty, focus score computed like Promethee) and warns on an
 // app switch. Clicking it opens Card Studio (end-of-session card generator).
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor } = require('electron');
 const fs = require('fs');
@@ -99,7 +99,7 @@ ipcMain.handle('studio:init', async () => {
     ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning, frNow,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
-    cardStyle: ['companion', 'centre'].includes(cfg.cardStyle) ? cfg.cardStyle : 'classic',
+    cardStyle: cfg.cardStyle === 'centre' ? 'center' : (['companion', 'center'].includes(cfg.cardStyle) ? cfg.cardStyle : 'classic'), // 'centre' = legacy value
   };
 });
 
@@ -316,7 +316,7 @@ function currentView() {
   const now = Date.now();
   let live = db;
   if (live && live.active) {
-    // keep the session clock running between DB reads (the malus drops as time passes)
+    // keep the session clock running between DB reads (the penalty drops as time passes)
     const elapsed = live.paused ? 0 : (now - dbReadAt) / 1000;
     live = { ...live, trackedSeconds: live.trackedSeconds + elapsed };
   }

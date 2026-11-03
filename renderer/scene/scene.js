@@ -3,7 +3,7 @@
 // End-of-session card, "companion" variant. The usual card (card.js, with a layout that
 // frees the bottom), a Windows-like taskbar, a cursor switching apps, and the real
 // companion renderer (companion.js) driven by a scripted 20 s scenario that uses the
-// session's real numbers (switches / malus / focus / last bonus challenge).
+// session's real numbers (switches / penalty / focus / last bonus challenge).
 //
 // Two modes:
 //   live    (Card Studio preview, iframe): real time, loops forever. Data via postMessage.
@@ -24,21 +24,21 @@
   let plan = null, cycleStart = 0, cycle = 0;
 
   // ---------- data ----------
-  function malusFor(sw, trackedSec) { const h = Math.max((trackedSec || 3600) / 3600, 1 / 60); return Math.min(35, (sw / h) * 2); }
+  function penaltyFor(sw, trackedSec) { const h = Math.max((trackedSec || 3600) / 3600, 1 / 60); return Math.min(35, (sw / h) * 2); }
   function buildPlan(d) {
     const c = d.companion || {}, n = Math.max(0, c.switches | 0), tracked = c.trackedSeconds || 3600;
-    const S2 = { switches: n, malus: c.malus != null ? c.malus : Math.round(malusFor(n, tracked)), focus: c.focus != null ? c.focus : 100, late: false };
+    const S2 = { switches: n, penalty: c.penalty != null ? c.penalty : Math.round(penaltyFor(n, tracked)), focus: c.focus != null ? c.focus : 100, late: false };
     const hasLate = n > 0;
     let S1 = S2;
     if (hasLate) {
-      const m1 = malusFor(n - 1, tracked), m2 = malusFor(n, tracked);
-      S1 = { switches: n - 1, malus: Math.round(m1), focus: Math.max(0, Math.min(100, Math.round(S2.focus + (m2 - m1)))), late: false };
+      const m1 = penaltyFor(n - 1, tracked), m2 = penaltyFor(n, tracked);
+      S1 = { switches: n - 1, penalty: Math.round(m1), focus: Math.max(0, Math.min(100, Math.round(S2.focus + (m2 - m1)))), late: false };
     }
     const xp = c.bonusXp || null;
     // the action starts right away (like the duration count-up), no idle intro
     const views = [
       [0.0, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
-      [1.0, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 4000, windowMs: 10000 } })],
+      [1.0, now => ({ mode: 'alert', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 4000, windowMs: 10000 } })],
       [2.5, () => ({ mode: 'focus', stats: { ...S1, challenge: null, bonusDone: [] }, alert: null })],
     ];
     // after the alert shows, the cursor only waits ~0.8 s before going back (same speed)
@@ -46,7 +46,7 @@
       [2.3, 'vscode'], [2.4, 'vscode', 1], [4.2, 'vscode'], [5.2, ...REST]];
     const active = [[0, 'vscode'], [0.8, 'claude'], [2.4, 'vscode']];
     if (hasLate) {
-      views.push([5.7, now => ({ mode: 'alerte', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 3000, windowMs: 10000 } })]);
+      views.push([5.7, now => ({ mode: 'alert', stats: S1, alert: { returnTo: 'VS Code', deadlineMs: now + 3000, windowMs: 10000 } })]);
       views.push([8.7, () => ({ mode: 'focus', stats: { ...S2, challenge: null, bonusDone: [] }, alert: null })]);
       cur.splice(cur.length - 1, 1, [4.6, 'vscode'], [5.3, 'warp'], [5.4, 'warp', 1], [6.2, 'warp'], [7.2, ...REST]);
       active.push([5.4, 'warp']);

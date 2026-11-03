@@ -21,7 +21,7 @@ function cardData() {
   };
 }
 
-const styleLayout = () => (cardStyle === 'centre' ? { center: true } : undefined);
+const styleLayout = () => (cardStyle === 'center' ? { center: true } : undefined);
 
 function loop() {
   const t = ((performance.now() - t0) / 1000) % T;
@@ -51,7 +51,7 @@ function fitScene() {
   f.style.transform = `scale(${cw.clientWidth / 1920})`;
 }
 function setCardStyle(style) {
-  cardStyle = style === 'companion' ? 'companion' : style === 'centre' ? 'centre' : 'classic';
+  cardStyle = style === 'companion' ? 'companion' : style === 'center' ? 'center' : 'classic';
   $('cardStyle').value = cardStyle;
   const f = $('scene'), cw = $('cw');
   if (cardStyle === 'companion') {

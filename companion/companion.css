@@ -32,30 +32,30 @@ body{font-family:var(--b-font);color:var(--cream)}
 .st-focus .l-right_hand{transform-origin:15% 15%;animation:idle 3.4s ease-in-out infinite}
 @keyframes idle{0%,100%{transform:rotate(0)}50%{transform:rotate(4deg)}}
 
-/* veille: breathing, swaying hands, hand-drawn Zs */
-.st-veille .l-body{transform-origin:50% 80%;animation:breathe 4.8s ease-in-out infinite}
+/* idle: breathing, swaying hands, hand-drawn Zs */
+.st-idle .l-body{transform-origin:50% 80%;animation:breathe 4.8s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.015,1.03)}}
-.st-veille .rig,.st-veille .shadow{animation-duration:5.2s}
-.st-veille .l-left_hand,.st-veille .l-right_hand{transform-origin:50% 0;animation:sway 4.8s ease-in-out infinite}
-.st-veille .l-right_hand{animation-delay:-2.4s}
+.st-idle .rig,.st-idle .shadow{animation-duration:5.2s}
+.st-idle .l-left_hand,.st-idle .l-right_hand{transform-origin:50% 0;animation:sway 4.8s ease-in-out infinite}
+.st-idle .l-right_hand{animation-delay:-2.4s}
 @keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
 .zsvg{position:absolute}
 .zsvg .zin{width:100%;height:100%;transform:rotate(-14deg);animation:zfloat 3.6s ease-in-out infinite;opacity:0}
 .zsvg.z1 .zin{animation-delay:.6s}.zsvg.z2 .zin{animation-delay:1.2s}
 @keyframes zfloat{0%{opacity:0;transform:translate(-8%,18%) rotate(-14deg) scale(.6)}18%{opacity:1;transform:translate(0,0) rotate(-14deg) scale(1)}45%{transform:translate(3%,-6%) rotate(-8deg) scale(1)}72%{opacity:1;transform:translate(0,-12%) rotate(-16deg) scale(1)}100%{opacity:0;transform:translate(8%,-30%) rotate(-10deg) scale(1.05)}}
 
-/* alerte: shaking mascot, fists pumping, two big flames behind (they only deform) */
-.st-alerte .rig{animation:shake .3s linear infinite}
-.st-alerte .shadow{animation:none;opacity:.35}
-.st-alerte .rig,.st-alerte .bgfx{top:-4%;bottom:4%}
+/* alert: shaking mascot, fists pumping, two big flames behind (they only deform) */
+.st-alert .rig{animation:shake .3s linear infinite}
+.st-alert .shadow{animation:none;opacity:.35}
+.st-alert .rig,.st-alert .bgfx{top:-4%;bottom:4%}
 @keyframes shake{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(-1.2%,0) rotate(-1.5deg)}75%{transform:translate(1.2%,0) rotate(1.5deg)}}
-.st-alerte .l-left_hand img{transform-origin:80% 95%;animation:pumpL .45s ease-in-out infinite}
-.st-alerte .l-right_hand img{transform-origin:15% 90%;animation:pumpR .45s ease-in-out infinite}
+.st-alert .l-left_hand img{transform-origin:80% 95%;animation:pumpL .45s ease-in-out infinite}
+.st-alert .l-right_hand img{transform-origin:15% 90%;animation:pumpR .45s ease-in-out infinite}
 @keyframes pumpL{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(-9deg) translateY(-6%)}}
 @keyframes pumpR{0%,100%{transform:rotate(-9deg) translateY(-6%)}50%{transform:rotate(0) translateY(0)}}
 .fx{position:absolute}
 .fx-inner{width:100%;height:100%;transform-origin:50% 100%}
-.st-alerte .fx-swoosh .fx-inner{animation:swoosh .45s ease-in-out infinite}
+.st-alert .fx-swoosh .fx-inner{animation:swoosh .45s ease-in-out infinite}
 @keyframes swoosh{0%,100%{opacity:1;transform:translateY(0)}50%{opacity:.35;transform:translateY(-6%)}}
 .fx-big .fx-inner{animation:bigfire 1.1s ease-in-out infinite;transform-origin:50% 100%}
 @keyframes bigfire{0%,100%{transform:scale(1,1)}25%{transform:scale(1.015,.985)}50%{transform:scale(.99,1.02)}75%{transform:scale(1.01,.995)}}
@@ -85,7 +85,7 @@ body{font-family:var(--b-font);color:var(--cream)}
 .warnbadge .tt{visibility:hidden;opacity:0;transition:.15s;position:absolute;bottom:170%;right:-10px;background:#000;color:#f4eadf;border:1px solid var(--mline);border-radius:8px;padding:6px 8px;font-size:10.5px;font-weight:400;width:180px;white-space:normal;text-align:left;line-height:1.35;text-transform:none;z-index:9;font-family:var(--b-font)}
 .warnbadge:hover .tt{visibility:visible;opacity:1}
 
-/* veille: open button */
+/* idle: open button */
 .openbtn{display:block;margin:7px;padding:7px 14px;border:0;border-radius:9px;background:var(--accent);color:#1a0d08;font-family:var(--m-font);font-size:max(10px,calc(var(--m) * .062));
   letter-spacing:1px;text-transform:uppercase;font-weight:700;cursor:pointer}
 .openbtn:hover{background:#ef7448}

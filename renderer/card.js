@@ -112,7 +112,7 @@
   function resetLayout() { _heroY = null; }
 
 
-  // "Centre" variant: the rank emblem is a large faded backdrop, the session time is the hero,
+  // "Center" variant: the rank emblem is a large faded backdrop, the session time is the hero,
   // big and centered, and the rank (big) sits just above the rail, with streak / XP / focus rate in the rail.
   function drawCentered(ctx, data, assets, makeCanvas, t, T) {
     const CX = W / 2, rail = 846;

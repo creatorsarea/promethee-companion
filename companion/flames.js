@@ -1,6 +1,6 @@
 // Hand-drawn animated flames for Promethee Companion (SVG + SMIL path morphing).
 // flameSVG({mood, uid}) -> markup for a 100x160 flame whose base is at the bottom center.
-// mood: 'calm' (focus), 'sleepy' (veille), 'angry' (alerte)
+// mood: 'calm' (focus), 'sleepy' (idle), 'angry' (alert)
 (function (root) {
   var OUTLINE = '#2b0503';
   function outer(tx, ty, a, b) { // tip (tx,ty), a/b = side bulge offsets
@@ -47,13 +47,13 @@
       '<path d="M40 70 C38 82 34 92 33 104" fill="none" stroke="#fff6d0" stroke-width="4" stroke-linecap="round" opacity=".55"/>' +
       '</svg>';
   }
-  // small angular spark (alerte)
+  // small angular spark (alert)
   function sparkSVG(uid) {
     return '<svg viewBox="0 0 40 60" style="overflow:visible;width:100%;height:100%;display:block">' +
       '<path d="M8 58 C6 40 14 26 30 4 C28 20 34 26 36 34 C38 44 30 56 8 58 Z" fill="#f05a10" stroke="#2b0503" stroke-width="4" stroke-linejoin="round"/>' +
       '<path d="M14 50 C14 40 20 32 28 20 C28 32 32 38 30 44 C28 50 22 52 14 50 Z" fill="#ffc64a"/></svg>';
   }
-  // motion lines beside the fists (alerte)
+  // motion lines beside the fists (alert)
   function swooshSVG() {
     return '<svg viewBox="0 0 60 140" style="overflow:visible;width:100%;height:100%;display:block">' +
       '<path d="M40 6 C14 30 8 80 30 134" fill="none" stroke="#2b0503" stroke-width="14" stroke-linecap="round"/>' +

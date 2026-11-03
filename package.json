@@ -2,7 +2,7 @@
   "name": "promethee-companion",
   "productName": "Promethee Companion",
   "version": "2.0.0",
-  "description": "Compagnon de session Promethee au-dessus de la barre des taches (switch, malus, focus en direct) + Card Studio pour publier la carte de fin de session en WebP anime.",
+  "description": "Promethee session companion above the taskbar (live switches, penalty, focus) + Card Studio to publish the end-of-session card as an animated WebP.",
   "main": "main.js",
   "scripts": { "start": "electron ." },
   "author": "Zaros",

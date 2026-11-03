@@ -1,21 +1,21 @@
 'use strict';
 /* global CompanionFlames */
 // Renders the companion from the view pushed by the main process:
-//   { mode: 'veille'|'focus'|'alerte', stats: {switches, malus, focus, late}|null,
+//   { mode: 'idle'|'focus'|'alert', stats: {switches, penalty, focus, late}|null,
 //     alert: {returnTo, deadlineMs, windowMs}|null, paused }
 (function () {
-  var LAYOUT = {"canvas":1254,"states":{"focus":[{"id":"body","src":"assets/focus/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/focus/left_hand.png","x":59,"y":394,"w":372,"h":385},{"id":"right_hand","src":"assets/focus/right_hand.png","x":840,"y":671,"w":400,"h":306}],"veille":[{"id":"body","src":"assets/veille/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/veille/left_hand.png","x":230,"y":659,"w":188,"h":352},{"id":"right_hand","src":"assets/veille/right_hand.png","x":783,"y":746,"w":184,"h":321}],"alerte":[{"id":"body","src":"assets/alerte/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/alerte/left_hand.png","x":72,"y":206,"w":340,"h":474},{"id":"right_hand","src":"assets/alerte/right_hand.png","x":805,"y":318,"w":417,"h":372}]}};
+  var LAYOUT = {"canvas":1254,"states":{"focus":[{"id":"body","src":"assets/focus/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/focus/left_hand.png","x":59,"y":394,"w":372,"h":385},{"id":"right_hand","src":"assets/focus/right_hand.png","x":840,"y":671,"w":400,"h":306}],"idle":[{"id":"body","src":"assets/idle/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/idle/left_hand.png","x":230,"y":659,"w":188,"h":352},{"id":"right_hand","src":"assets/idle/right_hand.png","x":783,"y":746,"w":184,"h":321}],"alert":[{"id":"body","src":"assets/alert/body.png","x":0,"y":0,"w":1254,"h":1254},{"id":"left_hand","src":"assets/alert/left_hand.png","x":72,"y":206,"w":340,"h":474},{"id":"right_hand","src":"assets/alert/right_hand.png","x":805,"y":318,"w":417,"h":372}]}};
   // Effects (canvas units). Big flames sit behind the shaking rig: they only deform.
   var FX = {
-    focus: [], veille: [],
-    alerte: [
+    focus: [], idle: [],
+    alert: [
       { t: 'swoosh', x: 28, y: 320, w: 64, h: 150 }, { t: 'swoosh', x: 1162, y: 340, w: 64, h: 150, flip: 1 },
       { t: 'flame', mood: 'fierce', x: 90, y: -260, w: 840, h: 1460, rot: -6, big: 1 },
       { t: 'flame', mood: 'fierce', x: 600, y: -20, w: 680, h: 1220, rot: -20, flip: 1, big: 1, delay: -0.4 },
     ],
   };
-  var ADJ = { alerte: { right_hand: { rot: -18, dx: 70, dy: -10 } } };
-  var ORDER = { focus: ['body', 'left_hand', 'right_hand'], veille: ['body', 'left_hand', 'right_hand'], alerte: ['right_hand', 'body', 'left_hand'] };
+  var ADJ = { alert: { right_hand: { rot: -18, dx: 70, dy: -10 } } };
+  var ORDER = { focus: ['body', 'left_hand', 'right_hand'], idle: ['body', 'left_hand', 'right_hand'], alert: ['right_hand', 'body', 'left_hand'] };
   var ZS = [[830, 240, 125], [935, 110, 175], [1065, -40, 235]];
   var C = LAYOUT.canvas, uid = 0;
   var pct = function (v) { return (v / C * 100) + '%'; };
@@ -43,7 +43,7 @@
       h += '<div class="layer l-' + l.id + '" style="left:' + pct(l.x + (a.dx || 0)) + ';top:' + pct(l.y + (a.dy || 0)) + ';width:' + pct(l.w) + ';height:' + pct(l.h) +
         (a.rot ? ';transform:rotate(' + a.rot + 'deg)' : '') + '"><img src="' + l.src + '" alt="" draggable="false"></div>';
     });
-    if (st === 'veille') ZS.forEach(function (z, i) {
+    if (st === 'idle') ZS.forEach(function (z, i) {
       h += '<div class="zsvg z' + i + '" style="left:' + pct(z[0]) + ';top:' + pct(z[1]) + ';width:' + pct(z[2]) + ';height:' + pct(z[2]) + '"><div class="zin">' + CompanionFlames.zSVG('z' + (uid++)) + '</div></div>';
     });
     h += '</div><div class="hitbox hit"></div>';
@@ -53,10 +53,10 @@
     if (st === 'focus') { mascot.classList.add('waving'); waveTimer = setTimeout(function () { mascot.classList.remove('waving'); }, 2300); }
   }
 
-  // ---- the front box: open button (veille), stats (focus / pause), countdown (alerte) ----
+  // ---- the front box: open button (idle), stats (focus / pause), countdown (alert) ----
   function renderBox(v) {
     var key, html;
-    if (v.mode === 'alerte' && v.alert) {
+    if (v.mode === 'alert' && v.alert) {
       key = 'alert:' + v.alert.returnTo;
       html = '<div class="back">Back to <span id="cdApp"></span></div><div class="cd" id="cd">10.0</div>';
     } else if (!v.stats) {
@@ -65,20 +65,20 @@
     } else {
       var s = v.stats;
       var ch = s.challenge && !celebrated[s.challenge.id] ? s.challenge : null;
-      key = 'stats:' + JSON.stringify([s.switches, s.malus, s.focus, s.late, v.paused, ch && ch.id, ch && ch.xp]);
+      key = 'stats:' + JSON.stringify([s.switches, s.penalty, s.focus, s.late, v.paused, ch && ch.id, ch && ch.xp]);
       var warn = s.late ? '<span class="warnbadge">!<span class="tt">Companion started after the session began: idle time before it launched is unknown, so focus may differ slightly from Promethee.</span></span>' : '';
       html = (ch ? '<div class="chal" id="chal"><span class="chal-k">Challenge</span><span class="chal-xp">+' + ch.xp + ' XP</span><span class="chal-t" id="chalT">--:--</span></div>' : '') +
         (v.paused ? '<span class="paused-tag">Paused</span>' : '') + '<div class="dash">' +
         '<div class="stat" id="statSw"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div>' +
-        '<div class="stat"><span class="num ml">' + (s.malus > 0 ? '-' + s.malus : '0') + '</span><span class="lbl">penalty</span></div>' +
+        '<div class="stat"><span class="num ml">' + (s.penalty > 0 ? '-' + s.penalty : '0') + '</span><span class="lbl">penalty</span></div>' +
         '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>';
     }
     if (key === boxKey) return;
     boxKey = key;
-    fbox.className = 'fbox hit' + (v.mode === 'alerte' ? ' is-alert' : '');
+    fbox.className = 'fbox hit' + (v.mode === 'alert' ? ' is-alert' : '');
     fbox.innerHTML = html;
     if (key.indexOf('stats:') === 0) measureBox();
-    if (v.mode === 'alerte') { var app = document.getElementById('cdApp'); if (app) app.textContent = v.alert.returnTo || ''; }
+    if (v.mode === 'alert') { var app = document.getElementById('cdApp'); if (app) app.textContent = v.alert.returnTo || ''; }
   }
 
   // the stats box height decides how low the window docks (box top = taskbar top)
@@ -150,15 +150,15 @@
     }
     renderBox(v);
     // end of an alert: back in time -> green check; too late -> "+1" on the switch counter
-    if (prev && prev.mode === 'alerte' && prev.alert && v.mode === 'focus') {
+    if (prev && prev.mode === 'alert' && prev.alert && v.mode === 'focus') {
       if (Date.now() < prev.alert.deadlineMs - 150) showOkFlash(); else showPlusOne();
     } else if (prev && prev.stats && v.stats && v.stats.switches > prev.stats.switches && Date.now() - lastPlusAt > 15000) {
       showPlusOne();   // a switch counted without us seeing the alert end
     }
     clearInterval(chalTimer); chalTimer = null;
-    if (v.mode !== 'alerte' && v.stats && v.stats.challenge) { tickChallenge(); chalTimer = setInterval(tickChallenge, 500); }
+    if (v.mode !== 'alert' && v.stats && v.stats.challenge) { tickChallenge(); chalTimer = setInterval(tickChallenge, 500); }
     clearInterval(cdTimer); cdTimer = null;
-    if (v.mode === 'alerte' && v.alert) { tickCountdown(); cdTimer = setInterval(tickCountdown, 100); }
+    if (v.mode === 'alert' && v.alert) { tickCountdown(); cdTimer = setInterval(tickCountdown, 100); }
   }
 
   // ---- mouse: click-through except over .hit; mascot and box = drag, button = open Card Studio ----
@@ -201,7 +201,7 @@
         "@font-face{font-family:'PromSans';src:url(" + cfg.fonts.sans + ")}";
       document.head.appendChild(st);
     }
-    if (!view) render({ mode: 'veille', stats: null, alert: null });
+    if (!view) render({ mode: 'idle', stats: null, alert: null });
   });
   window.companion.onView(render);
 })();

@@ -56,7 +56,7 @@ sql.js in a separate thread, only when it changes):
   1200 px), then calls `publish_feed_session`. "Publish hidden" goes through
   `publish_feed_session_v2` with the `only_me` audience, like the app does for a private post
   with an image.
-- **Card styles** (dropdown): Classic, Centre (big session time in the middle, rank emblem as
+- **Card styles** (dropdown): Classic, Center (big session time in the middle, rank emblem as
   background, big rank above the STREAK / XP / FOCUS RATE strip, no league name, place change
   or session id) and Companion.
 - **Pauses**: since Promethee 1.3.34, window events recorded during a pause
@@ -70,9 +70,9 @@ sql.js in a separate thread, only when it changes):
   league and rank in the league (read-only RPC `get_my_fr_state`, token read locally), FR gained
   (score difference between two readings, local history `fr-history.json`, one reading every
   10 min).
-- **Manual**: places gained (not shown in the Centre style), and rank/FR of older sessions that
+- **Manual**: places gained (not shown in the Center style), and rank/FR of older sessions that
   have no reading.
 - **Public anon key**: no longer hardcoded, read from the installed Promethee `app.asar`
   (`lib/anonkey.js`, asar header + main bundle only) and cached in `config.json` per app version.
 - **Note**: the local `rank_snapshots` table is NOT the league rank (small values like 18, 53),
-  so it is no longer used for the Centre style.
+  so it is no longer used for the Center style.
