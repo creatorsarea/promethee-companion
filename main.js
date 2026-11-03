@@ -9,8 +9,19 @@ const { resolve } = require('./lib/paths');
 const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const fr = require('./lib/fr');
+const { findAnonKey, isAnon } = require('./lib/anonkey');
+const { setAnonKey } = require('./lib/api');
+// Public anon key: read from the installed Promethee (cached per app version in config.json).
+function ensureAnon(paths) {
+  const cfg = readConfig();
+  if (cfg.anonKey && cfg.anonKeyFor === paths.appVersion && isAnon(cfg.anonKey)) return setAnonKey(cfg.anonKey);
+  let k = null;
+  try { k = findAnonKey(paths.asarPath); } catch {}
+  if (!k && cfg.anonKey && isAnon(cfg.anonKey)) k = cfg.anonKey; // keep the previous one if the new bundle cannot be read
+  if (k) { setAnonKey(k); patchConfig({ anonKey: k, anonKeyFor: paths.appVersion }); }
+}
 const FR_FILE = path.join(app.getPath('userData'), 'fr-history.json');
-async function snapFr() { try { const { token } = loadToken(resolve()); const st = await fr.fetchFrState(token); if (st) { fr.record(FR_FILE, st); return st; } } catch {} return null; }
+async function snapFr() { try { const _p = resolve(); ensureAnon(_p); const { token } = loadToken(_p); const st = await fr.fetchFrState(token); if (st) { fr.record(FR_FILE, st); return st; } } catch {} return null; }
 const { fetchMyPosts } = require('./lib/api');
 const { publishOrEdit } = require('./lib/publish');
 const { Worker } = require('worker_threads');
@@ -66,6 +77,7 @@ function openStudio() {
 
 ipcMain.handle('studio:init', async () => {
   const paths = resolve();
+  ensureAnon(paths);
   const { profile, sessions } = await readAll(paths, 30);
   const fontFile = n => path.join(paths.fontsDir, n);
   const fonts = {
@@ -99,6 +111,7 @@ ipcMain.handle('studio:tierImage', async (_e, tier) => {
 ipcMain.handle('studio:publish', async (_e, payload) => {
   try {
     const paths = resolve();
+    ensureAnon(paths);
     const { token, uid, secondsLeft } = loadToken(paths);
     const posts = await fetchMyPosts(token, uid);
     const existing = posts[payload.sessionId] || null;

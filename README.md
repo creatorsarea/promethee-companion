@@ -68,4 +68,5 @@ lue avec sql.js dans un thread a part, seulement quand elle change) :
 ## Donnees automatiques de la carte
 - Auto : duree, XP, streak (calcule comme l'app, avec les jours actifs), stats compagnon, ligue et rang dans la ligue (RPC lecture seule `get_my_fr_state`, token lu localement), FR gagnes (difference de score entre deux releves, historique local `fr-history.json`, releve toutes les 10 min).
 - Manuel : places gagnees (retire du style Centre), et rang/FR des anciennes sessions sans releve.
+- Cle publique anon Supabase : plus codee en dur, lue dans l'app.asar de Promethee installe (lib/anonkey.js, en-tete asar + bundle principal seulement) et mise en cache dans config.json par version.
 - Note : `rank_snapshots` de la base locale n'est PAS le rang de ligue (petites valeurs type 18, 53), il n'est plus utilise pour le style Centre.
