@@ -94,18 +94,21 @@ function applySession(idx) {
 }
 
 let frNow = null;
-// Optional "follow the author" button: shown only if not already following, acts only on click.
+// Optional "follow the author" button: shown only if not already following (or requested),
+// acts only on click. After a successful click the thank-you line fades out after a few seconds.
 async function initFollow() {
   const box = $('followBox'), btn = $('followBtn'), txt = $('followText');
   let r; try { r = await window.studio.followState(); } catch { return; }
-  if (!r || !r.ok || r.state === 'self' || r.state === 'following') return;
-  if (r.state === 'requested') { txt.textContent = 'Follow request sent to @' + r.handle + '.'; btn.hidden = true; box.hidden = false; return; }
+  if (!r || !r.ok || r.state !== 'none') return; // self, already following, request pending, or unavailable
   btn.textContent = 'Follow @' + r.handle; box.hidden = false;
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     const res = await window.studio.follow();
-    if (res.ok) { txt.textContent = res.state === 'requested' ? 'Follow request sent. Thanks!' : 'Thanks for following!'; btn.hidden = true; }
-    else { txt.textContent = 'Could not follow: ' + res.error; btn.disabled = false; }
+    if (res.ok) {
+      txt.textContent = res.state === 'requested' ? 'Follow request sent. Thanks!' : 'Thanks for following!';
+      btn.hidden = true;
+      setTimeout(() => { box.classList.add('fade'); setTimeout(() => { box.hidden = true; }, 900); }, 4000);
+    } else { txt.textContent = 'Could not follow: ' + res.error; btn.disabled = false; }
   });
 }
 
