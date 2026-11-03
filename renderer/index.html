@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Promethee Card Studio</title>
+<title>Promethee Companion</title>
 <style>
 :root{--panel:#141110;--line:#2a2522;--cream:#f4eadf;--dim:#9a8f86;--orange:#e1633a;}
 *{box-sizing:border-box;}
@@ -54,7 +54,8 @@ button.ghost{margin-top:8px;background:transparent;color:var(--orange);border:1p
 button{margin-top:16px;width:100%;background:var(--orange);color:#1a0d08;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DMSans',sans-serif;}
 button:disabled{opacity:.5;cursor:default;}
 .status{margin-top:12px;font-size:12px;color:var(--dim);font-family:'DMMono',monospace;line-height:1.6;white-space:pre-wrap;}
-.stage{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;}
+.stage{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-right:4px;}
+.stage>*{flex-shrink:0;}
 .cw{width:100%;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;}
 canvas{width:100%;height:auto;display:block;}
 a{color:var(--orange);word-break:break-all;}

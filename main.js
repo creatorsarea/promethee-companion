@@ -68,7 +68,7 @@ function openStudio() {
     return;
   }
   studioWin = new BrowserWindow({
-    width: 1320, height: 940, backgroundColor: '#0b0908', title: 'Promethee Card Studio',
+    width: 1320, height: 940, backgroundColor: '#0b0908', title: APP_TITLE,
     icon: trayIcon(64),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
