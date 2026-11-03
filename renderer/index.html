@@ -4,129 +4,211 @@
 <meta charset="utf-8"/>
 <title>Promethee Companion</title>
 <style>
-:root{--panel:#141110;--line:#2a2522;--cream:#f4eadf;--dim:#9a8f86;--orange:#e1633a;}
+:root{
+  --ink:#0a0807; --soot:#13100e; --soot2:#1a1512; --hair:#2a2420; --cream:#f1e9dd; --ash:#8d8076; --ember:#e8643a; --glint:#f3c58a;
+  --up:#7bd88f; --down:#e07a6a;
+  --panel:var(--soot); --line:var(--hair); --dim:var(--ash); --orange:var(--ember);
+}
 *{box-sizing:border-box;}
-body{margin:0;background:#070605;color:var(--cream);font-family:'DMSans',system-ui,sans-serif;display:flex;gap:22px;padding:22px;height:100vh;overflow:hidden;}
-.panel{width:360px;flex:0 0 360px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;overflow:auto;}
-h1{font-size:16px;margin:0 0 2px;letter-spacing:.5px;}
-.v{font-size:12px;color:var(--dim);margin:0 0 14px;font-family:'DMMono',monospace;}
-label{display:block;font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin:14px 0 5px;font-family:'DMMono',monospace;}
-input,select,textarea{width:100%;background:#0c0a09;border:1px solid var(--line);border-radius:9px;color:var(--cream);padding:9px 11px;font-size:13.5px;font-family:'DMSans',sans-serif;}
-textarea{resize:vertical;min-height:90px;}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);}
-.row{display:flex;gap:10px;}.row>div{flex:1;}
-.chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--dim);}
-.chk input{width:auto;}
-button.ghost{margin-top:8px;background:transparent;color:var(--orange);border:1px solid var(--orange);padding:9px;font-size:12.5px;}
-.follow{transition:opacity .9s ease;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--dim);line-height:1.5;}
+html,body{height:100%;}
+body{margin:0;background:var(--ink);color:var(--cream);font-family:'DMSans',system-ui,'Segoe UI',sans-serif;font-size:14px;overflow:hidden;}
+button{font-family:inherit;cursor:pointer;}
+:focus-visible{outline:2px solid var(--ember);outline-offset:2px;}
+[hidden]{display:none !important;}
 
-.stats[hidden]{display:none;}
-.stats{margin-top:18px;border-top:1px solid #2a211c;padding-top:16px;}
-.stats h2{margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-family:'DMMono',monospace;font-weight:500;}
-.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
-.tile{background:#0c0a09;border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
-.tile .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-family:'DMMono',monospace;}
-.tile .v{margin-top:4px;font-size:19px;color:var(--cream);font-family:'DMSans',sans-serif;font-weight:700;}
-.tile .s{margin-top:2px;font-size:11px;color:var(--dim);font-family:'DMMono',monospace;}
-.up{color:#7bd88f}.down{color:#e07a6a}
-.bars{display:flex;align-items:flex-end;gap:5px;height:84px;margin-top:12px;}
-.bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;}
-.bars .b i{display:block;width:100%;min-height:2px;background:var(--orange);border-radius:3px 3px 0 0;opacity:.85;}
-.bars .b span{font-size:9.5px;color:var(--dim);font-family:'DMMono',monospace;}
-.bars .b.today i{opacity:1;}
-.cmp{margin-top:18px;}
-.cmp .bar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.cmp .tab{margin:0;width:auto;padding:6px 12px;font-size:12px;background:transparent;color:var(--dim);border:1px solid var(--line);}
-.cmp .tab.on{color:var(--cream);border-color:var(--orange);}
-.cmp .refresh{margin:0 0 0 auto;width:auto;padding:6px 10px;font-size:12px;background:transparent;color:var(--dim);border:1px solid var(--line);}
-.row2{display:grid;grid-template-columns:22px minmax(90px,200px) 1fr 74px;align-items:center;gap:10px;padding:4px 0;font-size:12.5px;color:var(--cream);font-family:'DMSans',sans-serif;}
-.row2 .n{color:var(--dim);font-family:'DMMono',monospace;font-size:11px;}
-.row2 .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.row2 .tr{height:8px;background:#1a1512;border-radius:4px;overflow:hidden;}
-.row2 .tr i{display:block;height:100%;background:#6b5a4d;border-radius:4px;}
-.row2 .t{text-align:right;color:var(--dim);font-family:'DMMono',monospace;font-size:11.5px;}
-.row2.me .nm{color:var(--orange);font-weight:700;}
-.row2.me .tr i{background:var(--orange);}
-.cmp .note{margin-top:6px;font-size:11px;color:var(--dim);font-family:'DMMono',monospace;}
-.follow[hidden]{display:none;}
-.follow.fade{opacity:0;}
-.follow button.ghost{margin-top:0;width:auto;padding:8px 14px;white-space:nowrap;}
-button{margin-top:16px;width:100%;background:var(--orange);color:#1a0d08;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DMSans',sans-serif;}
-button:disabled{opacity:.5;cursor:default;}
-.status{margin-top:12px;font-size:12px;color:var(--dim);font-family:'DMMono',monospace;line-height:1.6;white-space:pre-wrap;}
-.stage{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-right:4px;}
-.stage>*{flex-shrink:0;}
-.cw{width:100%;background:#000;border:1px solid var(--line);border-radius:12px;overflow:hidden;line-height:0;}
+/* ---------- loading screen ---------- */
+#loader{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--ink);transition:opacity .7s ease;z-index:10;}
+#loader.out{opacity:0;pointer-events:none;}
+.wire{position:relative;width:min(280px,60vw);height:1px;background:var(--hair);overflow:hidden;}
+.wire::after{content:"";position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,var(--glint),var(--ember),transparent);animation:comet 1.6s cubic-bezier(.5,0,.3,1) infinite;}
+@keyframes comet{to{left:100%;}}
+#loadMsg{margin:18px 0 0;font-size:13px;color:var(--ash);letter-spacing:.02em;min-height:1.4em;opacity:0;transition:opacity .6s ease;}
+body.fonts #loadMsg,body.fonts .offer{opacity:1;}
+.offer{margin-top:64px;display:flex;flex-direction:column;align-items:center;gap:10px;font-size:13.5px;color:var(--ash);opacity:0;transition:opacity .9s ease .3s;text-align:center;}
+.offer button{background:none;border:0;padding:6px 2px;font-size:14px;font-weight:600;color:var(--ember);border-bottom:1px solid transparent;}
+.offer button:hover{border-bottom-color:var(--ember);}
+.offer button:disabled{opacity:.5;cursor:default;}
+
+/* ---------- app shell ---------- */
+#app{height:100%;display:flex;flex-direction:column;opacity:0;transition:opacity .7s ease;}
+#app.in{opacity:1;}
+.top{display:flex;align-items:center;gap:36px;padding:0 28px;height:58px;border-bottom:1px solid var(--hair);flex:0 0 auto;}
+.brand{font-weight:700;font-size:15px;letter-spacing:.01em;white-space:nowrap;}
+.brand small{font-weight:400;font-size:12px;color:var(--ash);margin-left:10px;}
+.tabs{position:relative;display:flex;gap:6px;height:100%;}
+.tabs button{background:none;border:0;color:var(--ash);font-size:14px;font-weight:500;padding:0 14px;height:100%;transition:color .2s;}
+.tabs button:hover{color:var(--cream);}
+.tabs button[aria-selected="true"]{color:var(--cream);}
+.tabs .ink{position:absolute;bottom:-1px;left:0;height:2px;width:0;background:var(--ember);transition:transform .35s cubic-bezier(.3,.7,.2,1),width .35s cubic-bezier(.3,.7,.2,1);}
+.chip{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ash);transition:opacity .9s ease;}
+.chip.fade{opacity:0;}
+.chip button{background:none;border:1px solid var(--ember);color:var(--ember);border-radius:999px;padding:5px 13px;font-size:13px;font-weight:600;}
+.chip button:hover{background:var(--ember);color:var(--ink);}
+.chip button:disabled{opacity:.5;cursor:default;}
+.panes{flex:1;min-height:0;position:relative;}
+.pane{position:absolute;inset:0;overflow-y:auto;padding:28px;}
+.pane>.wrap{max-width:1180px;margin:0 auto;}
+
+/* ---------- stats ---------- */
+.hero{display:flex;align-items:flex-end;gap:56px;flex-wrap:wrap;padding-bottom:26px;border-bottom:1px solid var(--hair);}
+.hero .lead{font-size:13px;color:var(--ash);margin-bottom:2px;}
+.hero .big{font-family:'PrometheeCondensed','DMSans',sans-serif;font-size:104px;line-height:.92;letter-spacing:.005em;color:var(--cream);font-variant-numeric:tabular-nums;}
+.hero .trend{margin-top:8px;font-size:13px;color:var(--ash);}
+.hero .trend b{font-weight:600;}
+.up{color:var(--up);} .down{color:var(--down);}
+.figs{display:flex;gap:0;margin-left:auto;}
+.fig{padding:0 28px;border-left:1px solid var(--hair);min-width:150px;}
+.fig:first-child{border-left:0;}
+.fig .k{font-size:12.5px;color:var(--ash);}
+.fig .v{font-family:'PrometheeCondensed','DMSans',sans-serif;font-size:40px;line-height:1.05;margin-top:4px;font-variant-numeric:tabular-nums;}
+.fig .s{font-size:12px;color:var(--ash);margin-top:2px;}
+.chart{display:flex;align-items:flex-end;gap:6px;height:112px;margin:30px 0 8px;border-bottom:1px solid var(--hair);}
+.chart .b{flex:1;height:100%;display:flex;align-items:flex-end;}
+.chart .b i{display:block;width:100%;min-height:2px;background:var(--soot2);border-top:2px solid #6b5a4d;border-radius:2px 2px 0 0;transition:background .2s;}
+.chart .b:hover i{background:#3a2a22;}
+.chart .b.today i{background:var(--ember);border-top-color:var(--glint);}
+.days{display:flex;gap:6px;font-size:11px;color:var(--ash);margin-bottom:34px;}
+.days span{flex:1;text-align:center;font-variant-numeric:tabular-nums;}
+.cmphead{display:flex;align-items:baseline;gap:22px;margin-bottom:6px;}
+.cmphead h2{margin:0 10px 0 0;font-size:16px;font-weight:700;}
+.seg{display:flex;gap:18px;}
+.seg button{background:none;border:0;padding:4px 0;color:var(--ash);font-size:13.5px;border-bottom:2px solid transparent;}
+.seg button[aria-pressed="true"]{color:var(--cream);border-bottom-color:var(--ember);}
+.seg button:hover{color:var(--cream);}
+.cmphead .refresh{margin-left:auto;background:none;border:0;color:var(--ash);font-size:13px;}
+.cmphead .refresh:hover{color:var(--cream);}
+.cmprow{display:grid;grid-template-columns:28px minmax(120px,240px) 1fr 84px;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--hair);font-size:14px;}
+.cmprow .n{color:var(--ash);font-variant-numeric:tabular-nums;font-size:13px;}
+.cmprow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cmprow .tr{height:6px;background:var(--soot2);border-radius:3px;overflow:hidden;}
+.cmprow .tr i{display:block;height:100%;background:#6b5a4d;border-radius:3px;}
+.cmprow .t{text-align:right;color:var(--ash);font-variant-numeric:tabular-nums;font-size:13px;}
+.cmprow.me .nm{color:var(--ember);font-weight:700;}
+.cmprow.me .tr i{background:var(--ember);}
+.cmprow.me .t{color:var(--cream);}
+.cmpnote{margin-top:12px;font-size:12.5px;color:var(--ash);}
+
+/* ---------- session ---------- */
+.sess{display:grid;grid-template-columns:340px minmax(0,1fr);gap:36px;align-items:start;}
+.form label{display:block;font-size:12.5px;color:var(--ash);margin:18px 0 6px;}
+.form>label:first-child{margin-top:0;}
+input,select,textarea{width:100%;background:var(--soot);border:1px solid var(--hair);border-radius:8px;color:var(--cream);padding:9px 11px;font-size:14px;font-family:inherit;}
+textarea{resize:vertical;min-height:96px;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ember);}
+.row{display:flex;gap:12px;}.row>div{flex:1;min-width:0;}
+.row label{margin-top:18px;}
+.status{font-size:12.5px;color:var(--ash);line-height:1.6;white-space:pre-wrap;}
+.mono{font-family:'DMMono',ui-monospace,monospace;}
+#poststate{margin-top:8px;}
+.chk{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px;color:var(--ash);}
+.chk input{width:auto;}
+.chk label{margin:0;font-size:13px;color:var(--ash);}
+#publish{margin-top:20px;width:100%;background:var(--ember);color:#1a0d08;border:0;border-radius:9px;padding:13px;font-size:14.5px;font-weight:700;}
+#publish:hover:not(:disabled){filter:brightness(1.08);}
+#publish:disabled{opacity:.45;cursor:default;}
+.stage{min-width:0;display:flex;flex-direction:column;gap:12px;}
+.cw{position:relative;width:100%;background:#000;border:1px solid var(--hair);border-radius:12px;overflow:hidden;line-height:0;}
 canvas{width:100%;height:auto;display:block;}
-a{color:var(--orange);word-break:break-all;}
-.cw{position:relative;}
 #scene{position:absolute;left:0;top:0;width:1920px;height:1024px;border:0;transform-origin:0 0;pointer-events:none;}
 .cw.is-scene{aspect-ratio:1920/1024;}
 .cw.is-scene canvas{visibility:hidden;}
+a{color:var(--ember);word-break:break-all;}
+
+@media (max-width:980px){.sess{grid-template-columns:1fr;}.figs{margin-left:0;}.hero .big{font-size:80px;}}
+@media (prefers-reduced-motion:reduce){.wire::after{animation:none;left:30%;}*{transition-duration:.01s !important;}}
 </style>
 </head>
 <body>
-<div class="panel">
-  <h1>Card Studio</h1>
-  <p class="v" id="appv">Loading…</p>
 
-  <label>Session</label>
-  <select id="sessionSel"></select>
-  <div class="status" id="poststate" style="margin-top:8px;"></div>
-
-  <label>Handle</label>
-  <input id="handle" value="@zaros"/>
-
-  <label>Card style</label>
-  <select id="cardStyle">
-    <option value="classic">Classic</option>
-    <option value="center">Center (big time, rank as background)</option>
-    <option value="companion">Companion (taskbar)</option>
-  </select>
-
-  <label>League</label>
-  <select id="tier"></select>
-  <div class="row">
-    <div><label>Rank</label><input id="rank" type="number" value="1"/></div>
-    <div><label>Streak (days)</label><input id="streak" type="number" value="0"/></div>
+<div id="loader" role="status" aria-live="polite">
+  <div class="wire"></div>
+  <p id="loadMsg">Starting up</p>
+  <div class="offer" id="offer" hidden>
+    <span id="offerText">While you wait, you can follow the author on Promethee.</span>
+    <button id="offerBtn" type="button">Follow @zaros</button>
   </div>
-  <div class="row">
-    <div><label>Places gained</label><input id="places" type="number" value="0"/></div>
-    <div><label>FR gained</label><input id="fr" type="number" value="0"/></div>
-  </div>
-
-  <label>Post text</label>
-  <textarea id="body" placeholder="Write the text of your session post…"></textarea>
-
-  <div class="chk"><input type="checkbox" id="hidden" checked/><label for="hidden" style="margin:0;text-transform:none;letter-spacing:0;font-family:'DMSans';font-size:12.5px;">Publish hidden (test, invisible to others)</label></div>
-
-  <button id="publish" disabled>Publish session</button>
-  <div class="status" id="status"></div>
-
 </div>
 
-<div class="stage">
-  <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Companion variant preview" hidden></iframe></div>
-  <div class="status" id="hint">Live animated preview. The final WebP is generated when you publish.</div>
-  <div class="follow" id="followBox" hidden>
-    <span id="followText">Enjoying Card Studio? Follow the author on Promethee.</span>
-    <button id="followBtn" class="ghost" type="button">Follow @zaros</button>
-  </div>
-  <section class="stats" id="stats" hidden>
-    <h2>Your stats</h2>
-    <div class="tiles" id="tiles"></div>
-    <div class="bars" id="bars"></div>
-    <div class="cmp">
-      <h2>Compare (last 7 days)</h2>
-      <div class="bar">
-        <button class="tab on" id="tabLeague" type="button">League neighbours</button>
-        <button class="tab" id="tabFollowing" type="button">People I follow</button>
-        <button class="refresh" id="cmpRefresh" type="button">Refresh</button>
+<div id="app">
+  <header class="top">
+    <div class="brand">Promethee Companion<small id="appv"></small></div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" id="tabStats" data-tab="stats" aria-selected="false" aria-controls="paneStats">Stats</button>
+      <button role="tab" id="tabSession" data-tab="session" aria-selected="false" aria-controls="paneSession">Session</button>
+      <span class="ink" id="ink"></span>
+    </nav>
+    <div class="chip" id="chip" hidden><span id="chipText"></span><button id="chipBtn" type="button">Follow @zaros</button></div>
+  </header>
+
+  <div class="panes">
+    <section class="pane" id="paneStats" role="tabpanel" hidden>
+      <div class="wrap">
+        <div class="hero">
+          <div>
+            <div class="lead">Focus in the last 7 days</div>
+            <div class="big" id="heroVal">-</div>
+            <div class="trend" id="heroTrend"></div>
+          </div>
+          <div class="figs" id="figs"></div>
+        </div>
+        <div class="chart" id="bars" aria-label="Focus per day, last 14 days"></div>
+        <div class="days" id="days"></div>
+        <div class="cmphead">
+          <h2>Compare</h2>
+          <div class="seg">
+            <button id="tabLeague" type="button" aria-pressed="true">League neighbours</button>
+            <button id="tabFollowing" type="button" aria-pressed="false">People I follow</button>
+          </div>
+          <button class="refresh" id="cmpRefresh" type="button">Refresh</button>
+        </div>
+        <div id="cmpList"></div>
+        <div class="cmpnote" id="cmpNote"></div>
       </div>
-      <div id="cmpList"></div>
-      <div class="note" id="cmpNote"></div>
-    </div>
-  </section>
+    </section>
+
+    <section class="pane" id="paneSession" role="tabpanel" hidden>
+      <div class="wrap sess">
+        <div class="form">
+          <label for="sessionSel">Session</label>
+          <select id="sessionSel"></select>
+          <div class="status" id="poststate"></div>
+
+          <label for="handle">Handle</label>
+          <input id="handle" value="@zaros"/>
+
+          <label for="cardStyle">Card style</label>
+          <select id="cardStyle">
+            <option value="classic">Classic</option>
+            <option value="center">Center (big time, rank as background)</option>
+            <option value="companion">Companion (taskbar)</option>
+          </select>
+
+          <label for="tier">League</label>
+          <select id="tier"></select>
+          <div class="row">
+            <div><label for="rank">Rank</label><input id="rank" type="number" value="1"/></div>
+            <div><label for="streak">Streak (days)</label><input id="streak" type="number" value="0"/></div>
+          </div>
+          <div class="row">
+            <div><label for="places">Places gained</label><input id="places" type="number" value="0"/></div>
+            <div><label for="fr">FR gained</label><input id="fr" type="number" value="0"/></div>
+          </div>
+
+          <label for="body">Post text</label>
+          <textarea id="body" placeholder="Write the text of your session post…"></textarea>
+
+          <div class="chk"><input type="checkbox" id="hidden" checked/><label for="hidden">Publish hidden (test, invisible to others)</label></div>
+          <button id="publish" disabled>Publish session</button>
+          <div class="status mono" id="status" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="stage">
+          <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Companion variant preview" hidden></iframe></div>
+          <div class="status" id="hint">Live animated preview. The final WebP is generated when you publish.</div>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script src="card.js"></script>

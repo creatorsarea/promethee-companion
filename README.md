@@ -84,6 +84,13 @@ author). It only acts on click, with your own token, through `follow_or_request_
 app; a private account receives a follow request instead). Nothing is followed automatically.
 To use it for your own fork, change `AUTHOR` in `lib/social.js`.
 
+## Window layout
+
+The window opens on a loading screen (a single line, with the optional follow offer under it). Once the sessions,
+stats and league data are loaded it shows two tabs, **Stats** and **Session** (publish or edit a session); the last
+opened tab is remembered. To add a tab, add a `data-tab` button and a matching `pane<Name>` section in
+`renderer/index.html`.
+
 ## Stats section
 
 Under the preview, Card Studio shows your stats and a comparison with other people.

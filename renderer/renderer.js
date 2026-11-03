@@ -94,83 +94,122 @@ function applySession(idx) {
 }
 
 let frNow = null;
-// Optional "follow the author" button: shown only if not already following (or requested),
-// acts only on click. After a successful click the thank-you line fades out after a few seconds.
-async function initFollow() {
-  const box = $('followBox'), btn = $('followBtn'), txt = $('followText');
-  let r; try { r = await window.studio.followState(); } catch { return; }
-  if (!r || !r.ok || r.state !== 'none') return; // self, already following, request pending, or unavailable
-  btn.textContent = 'Follow @' + r.handle; box.hidden = false;
-  btn.addEventListener('click', async () => {
-    btn.disabled = true;
-    const res = await window.studio.follow();
-    if (res.ok) {
-      txt.textContent = res.state === 'requested' ? 'Follow request sent. Thanks!' : 'Thanks for following!';
-      btn.hidden = true;
-      setTimeout(() => { box.classList.add('fade'); setTimeout(() => { box.hidden = true; }, 900); }, 4000);
-    } else { txt.textContent = 'Could not follow: ' + res.error; btn.disabled = false; }
-  });
-}
-
-// ---- Stats section: local numbers + on-demand comparison with other people ----
+// ---- helpers ----
 const fmtH = sec => { const m = Math.round((sec || 0) / 60), h = Math.floor(m / 60); return h ? `${h}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`; };
 const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function tile(k, v, s, cls) { const t = el('div', 'tile'); t.append(el('div', 'k', k), el('div', 'v', v)); const x = el('div', 's' + (cls ? ' ' + cls : ''), s || ''); t.append(x); return t; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function initStats() {
-  let r; try { r = await window.studio.stats(); } catch { return; }
-  if (!r || !r.ok) return;
-  const st = r.stats, tiles = $('tiles'); tiles.replaceChildren();
+// ---- optional "follow the author": offered on the loading screen, then as a small chip in the
+// header while it still applies. Acts only on click; nothing is followed automatically. ----
+let followInfo = null, lastFollowClick = 0;
+function setupFollow(r) {
+  if (!r || !r.ok || r.state !== 'none') return;   // self, already following, request pending, or unavailable
+  followInfo = r;
+  for (const id of ['offerBtn', 'chipBtn']) { $(id).textContent = 'Follow @' + r.handle; $(id).addEventListener('click', doFollow); }
+  $('offer').hidden = false;
+}
+async function doFollow() {
+  $('offerBtn').disabled = $('chipBtn').disabled = true; lastFollowClick = Date.now();
+  const res = await window.studio.follow();
+  const msg = res.ok ? (res.state === 'requested' ? 'Follow request sent. Thanks!' : 'Thanks for following!') : 'Could not follow: ' + res.error;
+  $('offerText').textContent = msg; $('chipText').textContent = msg;
+  if (!res.ok) { $('offerBtn').disabled = $('chipBtn').disabled = false; return; }
+  $('offerBtn').hidden = $('chipBtn').hidden = true; followInfo = null;
+  setTimeout(() => { $('chip').classList.add('fade'); $('offer').style.opacity = 0; setTimeout(() => { $('chip').hidden = true; }, 950); }, 4000);
+}
+
+// ---- stats tab ----
+function fig(k, v, s) { const f = el('div', 'fig'); f.append(el('div', 'k', k), el('div', 'v', v), el('div', 's', s || '')); return f; }
+function renderStats(st) {
   const diff = st.weekSec - st.prevWeekSec, pct = st.prevWeekSec ? Math.round((diff / st.prevWeekSec) * 100) : null;
-  tiles.append(
-    tile('Last 7 days', fmtH(st.weekSec), pct == null ? `${st.sessionsWeek} sessions` : `${diff >= 0 ? '▲' : '▼'} ${Math.abs(pct)}% vs prev week`, pct == null ? '' : (diff >= 0 ? 'up' : 'down')),
-    tile('Streak', `${st.streak} d`, `best ${st.maxStreak} d · ${st.activeDays30}/30 active`),
-    tile('Longest session', st.longest ? fmtH(st.longest.sec) : '-', st.longest ? fmtDay(st.longest.day) : ''),
-    tile('Best hour', st.bestHour == null ? '-' : `${String(st.bestHour).padStart(2, '0')}:00`, st.bestDay ? `best day ${fmtH(st.bestDay.sec)} · ${fmtDay(st.bestDay.day)}` : ''));
-  const bars = $('bars'); bars.replaceChildren();
+  $('heroVal').textContent = fmtH(st.weekSec);
+  const tr = $('heroTrend'); tr.replaceChildren();
+  if (pct == null) tr.textContent = `${st.sessionsWeek} sessions`;
+  else { const b = el('b', diff >= 0 ? 'up' : 'down', `${diff >= 0 ? '▲' : '▼'} ${Math.abs(pct)}%`); tr.append(b, ` vs the week before, ${st.sessionsWeek} sessions`); }
+  const figs = $('figs'); figs.replaceChildren(
+    fig('Streak', `${st.streak} d`, `best ${st.maxStreak} d, ${st.activeDays30} of the last 30 days`),
+    fig('Longest session', st.longest ? fmtH(st.longest.sec) : '-', st.longest ? fmtDay(st.longest.day) : ''),
+    fig('Best hour', st.bestHour == null ? '-' : `${String(st.bestHour).padStart(2, '0')}:00`, st.bestDay ? `best day ${fmtH(st.bestDay.sec)} on ${fmtDay(st.bestDay.day)}` : ''));
+  const bars = $('bars'), days = $('days'); bars.replaceChildren(); days.replaceChildren();
   const max = Math.max(1, ...st.series.map(x => x.sec));
   st.series.forEach((x, i) => {
     const b = el('div', 'b' + (i === st.series.length - 1 ? ' today' : '')), bar = el('i');
-    bar.style.height = Math.max(2, Math.round((x.sec / max) * 62)) + 'px'; b.title = `${fmtDay(x.day)}: ${fmtH(x.sec)}`;
-    b.append(bar, el('span', '', x.day.slice(8))); bars.append(b);
+    bar.style.height = Math.max(2, Math.round((x.sec / max) * 100)) + '%'; b.title = `${fmtDay(x.day)}: ${fmtH(x.sec)}`; b.append(bar); bars.append(b);
+    days.append(el('span', '', x.day.slice(8)));
   });
-  $('stats').hidden = false;
-  loadCompare('league', false);
 }
 
 let cmpMode = 'league';
 async function loadCompare(mode, force) {
   cmpMode = mode;
-  $('tabLeague').classList.toggle('on', mode === 'league'); $('tabFollowing').classList.toggle('on', mode === 'following');
-  const list = $('cmpList'), note = $('cmpNote'); list.replaceChildren(el('div', 'note', 'Loading…')); note.textContent = '';
+  $('tabLeague').setAttribute('aria-pressed', mode === 'league'); $('tabFollowing').setAttribute('aria-pressed', mode === 'following');
+  const list = $('cmpList'), note = $('cmpNote'); list.replaceChildren(el('div', 'cmpnote', 'Loading…')); note.textContent = '';
   let r; try { r = await window.studio.compare(mode, force); } catch (e) { r = { ok: false, error: String(e) }; }
-  if (mode !== cmpMode) return; // a newer tab was selected meanwhile
+  if (mode !== cmpMode) return; // another tab was selected meanwhile
   list.replaceChildren();
-  if (!r || !r.ok) { list.append(el('div', 'note', 'Unavailable: ' + (r && r.error ? r.error : 'unknown error'))); return; }
+  if (!r || !r.ok) { list.append(el('div', 'cmpnote', 'Could not load this list: ' + (r && r.error ? r.error : 'unknown error'))); return; }
   const rows = r.data.rows, max = Math.max(1, ...rows.map(x => x.weekSec));
-  if (rows.length < 2) { list.append(el('div', 'note', mode === 'following' ? 'You do not follow anybody yet.' : 'No neighbours found in your league.')); return; }
+  if (rows.length < 2) { list.append(el('div', 'cmpnote', mode === 'following' ? 'You do not follow anybody yet.' : 'No neighbours found in your league.')); return; }
   rows.forEach((u, i) => {
-    const row = el('div', 'row2' + (u.isMe ? ' me' : '')), tr = el('div', 'tr'), fill = el('i');
+    const row = el('div', 'cmprow' + (u.isMe ? ' me' : '')), tr = el('div', 'tr'), fill = el('i');
     fill.style.width = Math.max(1, Math.round((u.weekSec / max) * 100)) + '%'; tr.append(fill);
     row.append(el('div', 'n', String(i + 1)), el('div', 'nm', u.name), tr, el('div', 't', fmtH(u.weekSec)));
     list.append(row);
   });
   const me = rows.findIndex(u => u.isMe) + 1;
-  note.textContent = `You are #${me} of ${rows.length}` + (r.data.note ? ' · ' + r.data.note : '');
+  note.textContent = `You are #${me} of ${rows.length}` + (r.data.note ? `, ${r.data.note}` : '');
 }
 $('tabLeague').addEventListener('click', () => loadCompare('league', false));
 $('tabFollowing').addEventListener('click', () => loadCompare('following', false));
 $('cmpRefresh').addEventListener('click', () => loadCompare(cmpMode, true));
 
+// ---- tabs (more can be added: a button with data-tab + a pane with id pane<Name>) ----
+function showTab(name, remember = true) {
+  const tabs = [...document.querySelectorAll('#tabs [data-tab]')];
+  if (!tabs.some(t => t.dataset.tab === name)) name = tabs[0].dataset.tab;
+  for (const t of tabs) {
+    const on = t.dataset.tab === name; t.setAttribute('aria-selected', on);
+    const pane = $('pane' + t.dataset.tab[0].toUpperCase() + t.dataset.tab.slice(1)); if (pane) pane.hidden = !on;
+    if (on) { $('ink').style.width = t.offsetWidth + 'px'; $('ink').style.transform = `translateX(${t.offsetLeft}px)`; }
+  }
+  if (name === 'session') fitScene();
+  if (remember) { try { localStorage.setItem('tab', name); } catch {} }
+}
+document.querySelectorAll('#tabs [data-tab]').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+window.addEventListener('resize', () => { const cur = document.querySelector('#tabs [aria-selected="true"]'); if (cur) showTab(cur.dataset.tab, false); });
+
+// ---- boot: loading screen, then everything is ready at once ----
+const STEPS = ['Reading your sessions', 'Working out your stats', 'Checking the league'];
+async function boot() {
+  const t0b = Date.now(), msg = $('loadMsg');
+  msg.textContent = STEPS[0];
+  const followP = window.studio.followState().then(setupFollow).catch(() => {});
+  await init();                                   // sessions, fonts, preview (hidden for now)
+  document.body.classList.add('fonts');
+  msg.textContent = STEPS[1];
+  const statsR = await window.studio.stats().catch(() => null);
+  msg.textContent = STEPS[2];
+  await window.studio.compare('league', false).catch(() => {});   // warms the 10 min cache
+  await followP;
+  if (statsR && statsR.ok) renderStats(statsR.stats);
+  loadCompare('league', false);
+  // keep the screen up long enough to read the offer (and the thank-you after a click)
+  while (Date.now() < Math.max(t0b + 2200, lastFollowClick ? lastFollowClick + 2800 : 0)) await sleep(150);
+  if (followInfo) { $('chipText').textContent = ''; $('chip').hidden = false; }
+  let tab = 'session'; try { tab = localStorage.getItem('tab') || tab; } catch {}
+  $('app').classList.add('in'); showTab(tab, false);
+  $('loader').classList.add('out'); setTimeout(() => { $('loader').hidden = true; }, 750);
+}
+
 async function init() {
   const info = await window.studio.init();
   if (!info || !info.ok) { $('status').textContent = 'Init error: ' + (info && info.error); return; }
-  $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ' · token unavailable (autofill off)' : '');
+  $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ', token unavailable so rank, league and FR are not filled in' : '');
   frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
-    const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff);
+    try { const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff); } catch {} // a missing font must never block startup
   }
   await document.fonts.ready;
 
@@ -194,8 +233,6 @@ async function init() {
   $('cardStyle').addEventListener('change', () => { setCardStyle($('cardStyle').value); window.studio.saveConfig({ cardStyle }); });
   $('publish').disabled = false;
   loop();
-  initFollow();
-  initStats();
 }
 
 // Render the companion variant frame by frame (offscreen window, virtual clock) and encode
@@ -333,4 +370,4 @@ async function publish() {
 }
 
 $('publish').addEventListener('click', publish);
-init().catch(e => { $('status').textContent = 'Error: ' + e.message; });
+boot().catch(e => { $('loadMsg').textContent = 'Something went wrong: ' + e.message; $('loadMsg').style.opacity = 1; });
