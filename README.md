@@ -76,3 +76,10 @@ sql.js in a separate thread, only when it changes):
   (`lib/anonkey.js`, asar header + main bundle only) and cached in `config.json` per app version.
 - **Note**: the local `rank_snapshots` table is NOT the league rank (small values like 18, 53),
   so it is no longer used for the Center style.
+
+## Follow button
+
+Card Studio shows an optional "Follow @zaros" button (hidden if you already follow, or if you are the
+author). It only acts on click, with your own token, through `follow_or_request_v1` (same RPC as the
+app; a private account receives a follow request instead). Nothing is followed automatically.
+To use it for your own fork, change `AUTHOR` in `lib/social.js`.

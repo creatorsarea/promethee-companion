@@ -9,6 +9,7 @@ const { resolve } = require('./lib/paths');
 const { readAll } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const fr = require('./lib/fr');
+const social = require('./lib/social');
 const { findAnonKey, isAnon } = require('./lib/anonkey');
 const { setAnonKey } = require('./lib/api');
 // Public anon key: read from the installed Promethee (cached per app version in config.json).
@@ -103,6 +104,15 @@ ipcMain.handle('studio:init', async () => {
   };
 });
 
+// Optional "follow the author" button (explicit click only)
+ipcMain.handle('studio:followState', async () => {
+  try { const paths = resolve(); ensureAnon(paths); const { token, uid } = loadToken(paths); return { ok: true, state: await social.followState(token, uid), handle: social.AUTHOR.handle }; }
+  catch (e) { return { ok: false, error: e.message }; }
+});
+ipcMain.handle('studio:follow', async () => {
+  try { const paths = resolve(); ensureAnon(paths); const { token, uid } = loadToken(paths); await social.follow(token); return { ok: true, state: await social.followState(token, uid) }; }
+  catch (e) { return { ok: false, error: e.message }; }
+});
 ipcMain.handle('studio:tierImage', async (_e, tier) => {
   try { const paths = resolve(); const f = path.join(paths.tiersDir, tier + '.png'); return fs.existsSync(f) ? toDataURL(f, 'image/png') : null; }
   catch { return null; }
