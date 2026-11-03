@@ -15,12 +15,11 @@ input,select,textarea{width:100%;background:#0c0a09;border:1px solid var(--line)
 textarea{resize:vertical;min-height:90px;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--orange);}
 .row{display:flex;gap:10px;}.row>div{flex:1;}
-.sess{background:#0c0a09;border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:12px;font-family:'DMMono',monospace;color:var(--dim);line-height:1.7;}
-.sess b{color:var(--cream);font-weight:400;}
 .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12.5px;color:var(--dim);}
 .chk input{width:auto;}
 button.ghost{margin-top:8px;background:transparent;color:var(--orange);border:1px solid var(--orange);padding:9px;font-size:12.5px;}
-.follow{margin-top:22px;padding-top:14px;border-top:1px solid #2a211c;font-size:12px;color:var(--dim);line-height:1.5;}
+.follow{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--dim);line-height:1.5;}
+.follow button.ghost{margin-top:0;width:auto;padding:8px 14px;white-space:nowrap;}
 button{margin-top:16px;width:100%;background:var(--orange);color:#1a0d08;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DMSans',sans-serif;}
 button:disabled{opacity:.5;cursor:default;}
 .status{margin-top:12px;font-size:12px;color:var(--dim);font-family:'DMMono',monospace;line-height:1.6;white-space:pre-wrap;}
@@ -41,8 +40,7 @@ a{color:var(--orange);word-break:break-all;}
 
   <label>Session</label>
   <select id="sessionSel"></select>
-  <div class="sess" id="sessbox" style="margin-top:10px;">…</div>
-  <div class="status" id="poststate" style="margin-top:6px;"></div>
+  <div class="status" id="poststate" style="margin-top:8px;"></div>
 
   <label>Handle</label>
   <input id="handle" value="@zaros"/>
@@ -73,15 +71,15 @@ a{color:var(--orange);word-break:break-all;}
   <button id="publish" disabled>Publish session</button>
   <div class="status" id="status"></div>
 
-  <div class="follow" id="followBox" hidden>
-    <span id="followText">Enjoying Card Studio? Follow the author on Promethee.</span>
-    <button id="followBtn" class="ghost" type="button">Follow @zaros</button>
-  </div>
 </div>
 
 <div class="stage">
   <div class="cw" id="cw"><canvas id="cv" width="1920" height="1024"></canvas><iframe id="scene" title="Companion variant preview" hidden></iframe></div>
   <div class="status" id="hint">Live animated preview. The final WebP is generated when you publish.</div>
+  <div class="follow" id="followBox" hidden>
+    <span id="followText">Enjoying Card Studio? Follow the author on Promethee.</span>
+    <button id="followBtn" class="ghost" type="button">Follow @zaros</button>
+  </div>
 </div>
 
 <script src="card.js"></script>

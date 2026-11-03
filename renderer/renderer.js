@@ -71,9 +71,6 @@ new ResizeObserver(fitScene).observe(document.getElementById('cw'));
 
 function applySession(idx) {
   current = sessions[idx];
-  $('sessbox').innerHTML =
-    `time   <b>${current.durLabel}</b>\nxp     <b>${current.xp}</b>\nstreak <b>${current.streak ?? profile.streak ?? 0} d</b>\n${current.session}` +
-    (current.task ? `\ntask   <b>${current.task}</b>` : '');
   // rank = place inside the league (what the app shows after a session); only known live, so it is
   // filled for the latest session; older ones keep the value typed by hand
   if (idx === 0 && frNow && frNow.rank != null) $('rank').value = frNow.rank;
