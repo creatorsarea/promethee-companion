@@ -1,5 +1,14 @@
 # Promethee Companion
 
+> **Windows only, for now.** This project has only been developed and tested on Windows. It has not
+> been tested on macOS and is not expected to work there as is. A pull request adding macOS support is
+> very welcome, I am open to it.
+>
+> The parts that are Windows specific and would need work: where Promethee stores its data
+> (`lib/paths.js`), how the login token is decrypted (`lib/token.js`, Windows DPAPI through
+> `powershell.exe`), the foreground app detection (`lib/foreground.js`), and the taskbar docking and
+> start-with-Windows behaviour (`main.js`).
+
 A small companion above the Windows taskbar that tracks your Promethee session live, plus
 **Card Studio** (opened by clicking the companion) to generate and publish the end-of-session
 card as an animated WebP.
