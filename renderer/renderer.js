@@ -102,23 +102,22 @@ const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day:
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// ---- optional "follow the author": offered on the loading screen, then as a small chip in the
-// header while it still applies. Acts only on click; nothing is followed automatically. ----
-let followInfo = null, lastFollowClick = 0;
+// ---- optional "follow the author": a small chip in the header, shown once loading is done,
+// while it still applies. Acts only on click; nothing is followed automatically. ----
+let followInfo = null;
 function setupFollow(r) {
   if (!r || !r.ok || r.state !== 'none') return;   // self, already following, request pending, or unavailable
   followInfo = r;
-  for (const id of ['offerBtn', 'chipBtn']) { $(id).textContent = 'Follow @' + r.handle; $(id).addEventListener('click', doFollow); }
-  $('offer').hidden = false;
+  $('chipBtn').textContent = 'Follow @' + r.handle; $('chipBtn').addEventListener('click', doFollow);
 }
 async function doFollow() {
-  $('offerBtn').disabled = $('chipBtn').disabled = true; lastFollowClick = Date.now();
+  $('chipBtn').disabled = true;
   const res = await window.studio.follow();
   const msg = res.ok ? (res.state === 'requested' ? 'Follow request sent. Thank you!' : 'Thank you, that means a lot!') : 'Could not follow: ' + res.error;
-  $('offerText').textContent = msg; $('chipText').textContent = msg;
-  if (!res.ok) { $('offerBtn').disabled = $('chipBtn').disabled = false; return; }
-  $('offerBtn').hidden = $('chipBtn').hidden = true; followInfo = null;
-  setTimeout(() => { $('chip').classList.add('fade'); $('offer').style.opacity = 0; setTimeout(() => { $('chip').hidden = true; }, 950); }, 4000);
+  $('chipText').textContent = msg;
+  if (!res.ok) { $('chipBtn').disabled = false; return; }
+  $('chipBtn').hidden = true; followInfo = null;
+  setTimeout(() => { $('chip').classList.add('fade'); setTimeout(() => { $('chip').hidden = true; }, 950); }, 4000);
 }
 
 // ---- stats tab ----
@@ -185,18 +184,20 @@ const STEPS = ['Reading your sessions', 'Working out your stats', 'Comparing wit
 async function boot() {
   const t0b = Date.now(), msg = $('loadMsg');
   msg.textContent = STEPS[0];
+  // everything starts at once; the steps below only report progress
   const followP = window.studio.followState().then(setupFollow).catch(() => {});
+  const statsP = window.studio.stats().catch(() => null);
+  const compareP = window.studio.compare('global', false).catch(() => {});   // warms the 10 min cache
   await init();                                   // sessions, fonts, preview (hidden for now)
   document.body.classList.add('fonts');
   msg.textContent = STEPS[1];
-  const statsR = await window.studio.stats().catch(() => null);
+  const statsR = await statsP;
   msg.textContent = STEPS[2];
-  await window.studio.compare('global', false).catch(() => {});   // warms the 10 min cache
+  await compareP;
   await followP;
   if (statsR && statsR.ok) renderStats(statsR.stats);
   loadCompare('global', false);
-  // keep the screen up long enough to read the offer (and the thank-you after a click)
-  while (Date.now() < Math.max(t0b + 2200, lastFollowClick ? lastFollowClick + 2800 : 0)) await sleep(150);
+  while (Date.now() < t0b + 700) await sleep(100);   // avoid a flash when everything is instant
   if (followInfo) { $('chipText').textContent = ''; $('chip').hidden = false; }
   let tab = 'session'; try { tab = localStorage.getItem('tab') || tab; } catch {}
   $('app').classList.add('in'); showTab(tab, false);

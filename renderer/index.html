@@ -30,11 +30,7 @@ button{font-family:inherit;cursor:pointer;}
 .wire::after{content:"";position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,var(--glint),var(--ember),transparent);animation:comet 1.6s cubic-bezier(.5,0,.3,1) infinite;}
 @keyframes comet{to{left:100%;}}
 #loadMsg{margin:18px 0 0;font-size:13px;color:var(--ash);letter-spacing:.02em;min-height:1.4em;opacity:0;transition:opacity .6s ease;}
-body.fonts #loadMsg,body.fonts .offer{opacity:1;}
-.offer{margin-top:64px;display:flex;flex-direction:column;align-items:center;gap:10px;font-size:13.5px;color:var(--ash);opacity:0;transition:opacity .9s ease .3s;text-align:center;}
-.offer button{background:none;border:0;padding:6px 2px;font-size:14px;font-weight:600;color:var(--ember);border-bottom:1px solid transparent;}
-.offer button:hover{border-bottom-color:var(--ember);}
-.offer button:disabled{opacity:.5;cursor:default;}
+body.fonts #loadMsg{opacity:1;}
 
 /* ---------- app shell ---------- */
 #app{height:100%;display:flex;flex-direction:column;opacity:0;transition:opacity .7s ease;}
@@ -130,10 +126,6 @@ a{color:var(--ember);word-break:break-all;}
 <div id="loader" role="status" aria-live="polite">
   <div class="wire"></div>
   <p id="loadMsg">Starting up</p>
-  <div class="offer" id="offer" hidden>
-    <span id="offerText">Enjoying this companion? Say thanks to its creator with a follow.</span>
-    <button id="offerBtn" type="button">Follow @zaros</button>
-  </div>
 </div>
 
 <div id="app">
