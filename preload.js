@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('studio', {
   publish: (payload) => ipcRenderer.invoke('studio:publish', payload),
   followState: () => ipcRenderer.invoke('studio:followState'),
   follow: () => ipcRenderer.invoke('studio:follow'),
+  live: () => ipcRenderer.invoke('studio:live'),
+  sessions: () => ipcRenderer.invoke('studio:sessions'),
   stats: () => ipcRenderer.invoke('studio:stats'),
   compare: (mode, force) => ipcRenderer.invoke('studio:compare', { mode, force }),
   sceneBegin: (data) => ipcRenderer.invoke('studio:sceneBegin', data),

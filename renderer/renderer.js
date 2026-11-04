@@ -72,14 +72,21 @@ new ResizeObserver(fitScene).observe(document.getElementById('cw'));
 function applySession(idx) {
   current = sessions[idx];
   // rank = place inside the league (what the app shows after a session); only known live, so it is
-  // filled for the latest session; older ones keep the value typed by hand
-  if (idx === 0 && frNow && frNow.rank != null) $('rank').value = frNow.rank;
+  // filled for the latest session (running or finished); older ones keep the value typed by hand
+  const latest = idx === 0 || (sessions[0].live && idx === 1);
+  if (latest && frNow && frNow.rank != null) $('rank').value = frNow.rank;
   else if (!$('rank').dataset.touched) $('rank').value = current.rank ?? 1;
-  if (current.frGain != null) $('fr').value = current.frGain;
+  if (current.live) $('fr').value = 0;
+  else if (current.frGain != null) $('fr').value = current.frGain;
   $('streak').value = current.streak ?? profile.streak ?? 0;
   const ex = posts[current.sessionId];
   const btn = $('publish'), ps = $('poststate'), vis = $('visibility');
-  if (ex) {
+  btn.disabled = !!current.live;
+  if (current.live) {
+    btn.textContent = 'Publish when the session ends';
+    vis.value = lastAudience;
+    ps.textContent = 'Session in progress: the card updates live. Stop it in Promethee and it switches to the final numbers, ready to publish.';
+  } else if (ex) {
     $('body').value = ex.body || '';
     btn.textContent = 'Update session';
     vis.value = ex.audience || (ex.hidden ? 'only_me' : 'everyone');
@@ -94,6 +101,44 @@ function applySession(idx) {
 }
 
 let frNow = null;
+// ---- running session: shown first and refreshed every few seconds; once Promethee stops it, the
+// list is reloaded and the finished session becomes the default (ready to publish) ----
+const liveLabel = l => `▶ Running · ${l.durLabel}${l.task ? ' · ' + l.task : ''}`;
+function withLive(l) { return { ...l, pickLabel: liveLabel(l), rank: (frNow && frNow.rank) ?? (sessions.find(x => !x.live) || {}).rank ?? 1, streak: profile.streak }; }
+function fillSessionSelect(sel) {
+  const ssel = $('sessionSel'); ssel.innerHTML = '';
+  sessions.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (s.live ? '' : (posts[s.sessionId] ? '● ' : '○ ')) + s.pickLabel; ssel.appendChild(o); });
+  ssel.value = String(sel || 0);
+}
+let liveBusy = false;
+async function liveTick() {
+  if (liveBusy || publishing) return;
+  liveBusy = true;
+  try {
+    const l = await window.studio.live().catch(() => null);
+    const had = sessions[0] && sessions[0].live ? sessions[0] : null;
+    if (l && had && l.sessionId === had.sessionId) {
+      const prev = sessions[0].companion || {};
+      sessions[0] = withLive(l);
+      $('sessionSel').options[0].textContent = sessions[0].pickLabel;
+      if (current && current.live) {
+        current = sessions[0];
+        const c = current.companion, changed = prev.switches !== c.switches || prev.penalty !== c.penalty || prev.focus !== c.focus;
+        postScene(changed ? 'setup' : 'update');   // 'setup' replays the scripted scene with the new numbers
+      }
+    } else if (l || had) {
+      // a session started, or the running one ended: reload the list
+      const onLive = current && current.live, keepId = current && !current.live ? current.sessionId : null;
+      const r = await window.studio.sessions();
+      if (!r || !r.ok) return;
+      sessions = r.sessions; posts = r.posts || posts; if (r.frNow) frNow = r.frNow;
+      if (l) sessions.unshift(withLive(l));
+      let idx = 0;
+      if (!onLive && keepId) { const k = sessions.findIndex(x => x.sessionId === keepId); if (k >= 0) idx = k; }
+      fillSessionSelect(idx); applySession(idx);
+    }
+  } finally { liveBusy = false; }
+}
 const AUDIENCE_LABEL = { everyone: 'everyone', friends: 'friends', only_me: 'only me' };
 let lastAudience = 'only_me';
 // ---- helpers ----
@@ -216,9 +261,9 @@ async function init() {
   }
   await document.fonts.ready;
 
-  const ssel = $('sessionSel'); ssel.innerHTML = '';
-  sessions.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = (posts[s.sessionId] ? '● ' : '○ ') + s.pickLabel; ssel.appendChild(o); });
-  ssel.value = '0';
+  try { const l = await window.studio.live(); if (l) sessions.unshift(withLive(l)); } catch {}
+  fillSessionSelect(0);
+  const ssel = $('sessionSel');
   ssel.addEventListener('change', () => applySession(parseInt(ssel.value, 10)));
 
   $('handle').value = info.handle;
@@ -234,7 +279,8 @@ async function init() {
   applySession(0);
   setCardStyle(info.cardStyle);
   $('cardStyle').addEventListener('change', () => { setCardStyle($('cardStyle').value); window.studio.saveConfig({ cardStyle }); });
-  $('publish').disabled = false;
+  $('publish').disabled = !!current.live;
+  setInterval(liveTick, 3000);
   loop();
 }
 
@@ -329,7 +375,10 @@ async function companionFrames(st) {
   return { ok: false, error: 'the companion variant exceeds 8 MB even at low quality' };
 }
 
+let publishing = false;
 async function publish() {
+  if (current.live || publishing) return;
+  publishing = true;
   const btn = $('publish'); btn.disabled = true;
   const st = $('status'); st.textContent = 'Generating frames…';
   if (rafId) cancelAnimationFrame(rafId), rafId = null;
@@ -338,7 +387,7 @@ async function publish() {
   let frames = [], displayFrames = null, delayMs = Math.round(1000 / FPS);
   if (cardStyle === 'companion') {
     const r = await companionFrames(st);
-    if (!r.ok) { st.textContent = 'Error: ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; return; }
+    if (!r.ok) { st.textContent = 'Error: ' + r.error; t0 = performance.now(); loop(); btn.disabled = false; publishing = false; return; }
     frames = r.frames; displayFrames = r.displayFrames; delayMs = r.delayMs;
   } else {
     PrometheeCard.resetLayout();
@@ -370,7 +419,7 @@ async function publish() {
   } else {
     st.textContent = 'Error: ' + res.error;
   }
-  t0 = performance.now(); loop(); btn.disabled = false;
+  t0 = performance.now(); loop(); btn.disabled = false; publishing = false;
 }
 
 $('publish').addEventListener('click', publish);

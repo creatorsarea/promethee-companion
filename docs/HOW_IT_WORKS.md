@@ -74,7 +74,12 @@ To use it for your own fork, change `AUTHOR` in `lib/social.js`.
 
 The window opens on a loading screen (a single animated line). Once the sessions,
 stats and league data are loaded it shows two tabs, **Stats** and **Session** (publish or edit a session); the last
-opened tab is remembered. To add a tab, add a `data-tab` button and a matching `pane<Name>` section in
+opened tab is remembered.
+
+In the **Session** tab, a session that is currently running is listed first and selected by default, with its live
+numbers (duration, switches, penalty, focus). The preview refreshes every few seconds and the publish button stays
+disabled until Promethee stops the session; the list then reloads and the finished session is selected, ready to
+publish. Without a running session, the latest finished session is selected. To add a tab, add a `data-tab` button and a matching `pane<Name>` section in
 `renderer/index.html`.
 
 ## Stats section

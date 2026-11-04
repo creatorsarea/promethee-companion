@@ -6,7 +6,7 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonit
 const fs = require('fs');
 const path = require('path');
 const { resolve } = require('./lib/paths');
-const { readAll } = require('./lib/db');
+const { readAll, fmtDur, fmtSession } = require('./lib/db');
 const { loadToken } = require('./lib/token');
 const fr = require('./lib/fr');
 const social = require('./lib/social');
@@ -106,6 +106,32 @@ ipcMain.handle('studio:init', async () => {
   };
 });
 
+// Running session (from the cache the companion refreshes every 2 s): shaped like a finished
+// session so the card preview can use it, flagged live. null when nothing is running.
+ipcMain.handle('studio:live', async () => {
+  const st = db;
+  if (!st || !st.active) return null;
+  const tracked = st.trackedSeconds + (st.paused ? 0 : (Date.now() - dbReadAt) / 1000);
+  const hours = Math.max(tracked / 3600, 1 / 60), sw = Number(st.appSwitchCount) || 0;
+  const penalty = Math.min(35, (sw / hours) * 2), d = fmtDur(tracked);
+  return {
+    live: true, sessionId: st.sessionId, task: st.task || null, startedAt: st.startedAt, endedAt: null, paused: !!st.paused,
+    durMin: d.durMin, durLabel: d.label, xp: '+0', session: fmtSession(st.startedAt, Date.now()),
+    companion: { switches: sw, focus: Math.round(100 - penalty), penalty: Math.round(penalty), trackedSeconds: Math.round(tracked), idleSeconds: 0, bonusXp: null },
+  };
+});
+// Same data as studio:init for the session list, refreshed after a session ends
+ipcMain.handle('studio:sessions', async () => {
+  try {
+    const paths = resolve(); ensureAnon(paths);
+    const { sessions } = await readAll(paths, 30);
+    let posts = {}; try { const { token, uid } = loadToken(paths); posts = await fetchMyPosts(token, uid); } catch {}
+    const frNow = await snapFr();
+    const h = fr.loadHistory(FR_FILE);
+    for (const s of sessions) s.frGain = fr.gainFor(h, s.startedAt, s.endedAt);
+    return { ok: true, sessions, posts, frNow };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
 // Stats section: local numbers (no network) and an on-demand comparison with other people
 ipcMain.handle('studio:stats', async () => {
   try { return { ok: true, stats: await stats.localStats(resolve()) }; } catch (e) { return { ok: false, error: e.message }; }
