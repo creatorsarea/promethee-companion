@@ -47,6 +47,10 @@ own session file. It is only sent to Promethee's servers, never anywhere else, a
 The stats and ranking views only read data. Something is written to your account only when you press
 "Publish session" or "Follow".
 
+The only other network call is a public, anonymous request to GitHub to check whether a newer release
+exists (nothing about you is sent). If there is one, a small notice appears in the tray menu and in the
+Card Studio header.
+
 ## Troubleshooting
 
 | Message | What to do |

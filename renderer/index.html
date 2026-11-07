@@ -43,7 +43,12 @@ body.fonts #loadMsg{opacity:1;}
 .tabs button:hover{color:var(--cream);}
 .tabs button[aria-selected="true"]{color:var(--cream);}
 .tabs .ink{position:absolute;bottom:-1px;left:0;height:2px;width:0;background:var(--ember);transition:transform .35s cubic-bezier(.3,.7,.2,1),width .35s cubic-bezier(.3,.7,.2,1);}
-.chip{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ash);transition:opacity .9s ease;}
+.side{margin-left:auto;display:flex;align-items:center;gap:18px;}
+.upd{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--glint);}
+.upd button{background:none;border:0;padding:2px 4px;font-size:12.5px;color:inherit;font-weight:600;border-bottom:1px solid transparent;}
+.upd button:hover{border-bottom-color:var(--glint);}
+.upd .x{color:var(--ash);font-weight:400;}
+.chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ash);transition:opacity .9s ease;}
 .chip.fade{opacity:0;}
 .chip button{background:none;border:1px solid var(--ember);color:var(--ember);border-radius:999px;padding:5px 13px;font-size:13px;font-weight:600;}
 .chip button:hover{background:var(--ember);color:var(--ink);}
@@ -136,7 +141,10 @@ a{color:var(--ember);word-break:break-all;}
       <button role="tab" id="tabSession" data-tab="session" aria-selected="false" aria-controls="paneSession">Session</button>
       <span class="ink" id="ink"></span>
     </nav>
-    <div class="chip" id="chip" hidden><span id="chipText"></span><button id="chipBtn" type="button">Follow @zaros</button></div>
+    <div class="side">
+      <div class="upd" id="upd" hidden><button id="updBtn" type="button"></button><button class="x" id="updX" type="button" aria-label="Dismiss" title="Dismiss">&times;</button></div>
+      <div class="chip" id="chip" hidden><span id="chipText"></span><button id="chipBtn" type="button">Follow @zaros</button></div>
+    </div>
   </header>
 
   <div class="panes">

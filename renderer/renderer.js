@@ -165,6 +165,17 @@ async function doFollow() {
   setTimeout(() => { $('chip').classList.add('fade'); setTimeout(() => { $('chip').hidden = true; }, 950); }, 4000);
 }
 
+// ---- update notice: a small link in the header when a newer release exists (dismissed per version) ----
+async function setupUpdate() {
+  let u = null; try { u = await window.studio.updateInfo(); } catch {}
+  if (!u) return;
+  try { if (localStorage.getItem('updDismissed') === u.latest) return; } catch {}
+  $('updBtn').textContent = `Version ${u.latest} available`;
+  $('updBtn').onclick = () => window.studio.openUpdate();
+  $('updX').onclick = () => { $('upd').hidden = true; try { localStorage.setItem('updDismissed', u.latest); } catch {} };
+  $('upd').hidden = false;
+}
+
 // ---- stats tab ----
 function fig(k, v, s) { const f = el('div', 'fig'); f.append(el('div', 'k', k), el('div', 'v', v), el('div', 's', s || '')); return f; }
 function renderStats(st) {
@@ -246,6 +257,7 @@ async function boot() {
   if (followInfo) { $('chipText').textContent = ''; $('chip').hidden = false; }
   let tab = 'session'; try { tab = localStorage.getItem('tab') || tab; } catch {}
   $('app').classList.add('in'); showTab(tab, false);
+  setupUpdate();
   $('loader').classList.add('out'); setTimeout(() => { $('loader').hidden = true; }, 750);
 }
 

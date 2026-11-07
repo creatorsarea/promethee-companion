@@ -2,7 +2,7 @@
 // Promethee Companion: a small mascot above the taskbar that shows the live session
 // state (switches, switch penalty, focus score computed like Promethee) and warns on an
 // app switch. Clicking it opens Card Studio (end-of-session card generator).
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { resolve } = require('./lib/paths');
@@ -11,6 +11,7 @@ const { loadToken } = require('./lib/token');
 const fr = require('./lib/fr');
 const social = require('./lib/social');
 const stats = require('./lib/stats');
+const update = require('./lib/update');
 const { findAnonKey, isAnon } = require('./lib/anonkey');
 const { setAnonKey } = require('./lib/api');
 // Public anon key: read from the installed Promethee (cached per app version in config.json).
@@ -132,6 +133,16 @@ ipcMain.handle('studio:sessions', async () => {
     return { ok: true, sessions, posts, frNow };
   } catch (e) { return { ok: false, error: e.message }; }
 });
+// Update notice: checked a little after startup, then every 6 hours; shown in the tray menu and the
+// Card Studio header. Opening is limited to links into this repository.
+let updateInfo = null;
+async function refreshUpdate() {
+  updateInfo = await update.checkForUpdate(app.getVersion());
+  if (tray) buildTrayMenu();
+}
+ipcMain.handle('studio:updateInfo', () => updateInfo);
+ipcMain.handle('studio:openUpdate', () => { if (updateInfo && update.isOwnUrl(updateInfo.url)) shell.openExternal(updateInfo.url); });
+
 // Stats section: local numbers (no network) and an on-demand comparison with other people
 ipcMain.handle('studio:stats', async () => {
   try { return { ok: true, stats: await stats.localStats(resolve()) }; } catch (e) { return { ok: false, error: e.message }; }
@@ -408,6 +419,7 @@ function buildTrayMenu() {
   const visible = compWin && compWin.isVisible();
   const size = cfg.companionSize || 'M';
   tray.setContextMenu(Menu.buildFromTemplate([
+    ...(updateInfo ? [{ label: `Update available: v${updateInfo.latest} (open)`, click: () => shell.openExternal(updateInfo.url) }] : []),
     { label: 'Open Card Studio', click: openStudio },
     { type: 'separator' },
     { label: visible ? 'Hide companion' : 'Show companion', click: () => toggleCompanion() },
@@ -449,6 +461,7 @@ function boot() {
   pollDb().then(() => pushView(true));
   setInterval(pollDb, 2000);
   setTimeout(snapFr, 20000); setInterval(snapFr, 10 * 60e3);
+  setTimeout(refreshUpdate, 15000); setInterval(refreshUpdate, 6 * 3600e3);
   setInterval(() => pushView(false), 250);
   // keep it above the taskbar (Windows sometimes drops topmost after fullscreen apps)
   setInterval(() => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); }, 30000);

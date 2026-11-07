@@ -101,3 +101,14 @@ The "Visible to" menu (Everyone, Friends, Only me) matches the app's audiences. 
 `publish_feed_session` (everyone) or `publish_feed_session_v2` (friends, only me). For a post that is
 already published, changing the menu before "Update session" also calls `set_feed_event_audience`. The
 last choice is remembered; the default is "Only me".
+
+## Update notice
+
+`lib/update.js` asks the public GitHub API for the latest release (`releases/latest`, no token, a generic
+User-Agent) 15 seconds after startup and then every 6 hours. If its tag is newer than the version in
+`package.json` (plain `major.minor.patch` comparison), the tray menu gets an "Update available" entry and the
+Card Studio header a small link, which can be dismissed per version. Only links into this repository are ever
+opened. Every failure (offline, rate limit, private repository, no release yet) is silent.
+
+To announce an update: bump `version` in `package.json`, then publish a GitHub release whose tag is
+`v<version>`. Drafts and pre-releases are ignored.
