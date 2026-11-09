@@ -84,5 +84,6 @@ used, and the layout of the code.
 
 Copyright (C) 2026 Zaros. Released under the [GNU Affero General Public License v3.0](LICENSE). You can use,
 study, modify and share this project, but if you distribute a modified version you must publish its source under
-the same license. The license covers this project's own code only. The Promethee name, logo, fonts, league
-images and app icons belong to their owners and are read from your own Promethee installation, not shipped here.
+the same license. The license covers this project's code and the companion mascot artwork in `companion/assets`,
+which is original work by Zaros. The Promethee name, logo, fonts, league images and app icons belong to their
+owners and are read from your own Promethee installation, not shipped here.
