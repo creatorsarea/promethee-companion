@@ -12,6 +12,7 @@ const fr = require('./lib/fr');
 const social = require('./lib/social');
 const stats = require('./lib/stats');
 const update = require('./lib/update');
+const { loadSceneIcons } = require('./lib/icons');
 const { findAnonKey, isAnon } = require('./lib/anonkey');
 const { setAnonKey } = require('./lib/api');
 // Public anon key: read from the installed Promethee (cached per app version in config.json).
@@ -99,7 +100,7 @@ ipcMain.handle('studio:init', async () => {
   for (const s of sessions) s.frGain = fr.gainFor(frHistory, s.startedAt, s.endedAt);
 
   return {
-    ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, availableTiers, tokenWarning, frNow,
+    ok: true, appVersion: paths.appVersion, profile, sessions, posts, fonts, icons: loadSceneIcons(paths), availableTiers, tokenWarning, frNow,
     defaultTier: cfg.lastTier && availableTiers.includes(cfg.lastTier) ? cfg.lastTier : (availableTiers.includes('diamond') ? 'diamond' : availableTiers[0] || 'diamond'),
     handle: cfg.handle || ('@' + String(profile.displayName || 'user').toLowerCase().replace(/\s+/g, '')),
     audience: ['everyone', 'friends', 'only_me'].includes(cfg.lastAudience) ? cfg.lastAudience : 'only_me',

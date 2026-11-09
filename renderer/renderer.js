@@ -6,7 +6,7 @@ const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d');
 const makeCanvas = (w, h) => { const o = document.createElement('canvas'); o.width = w; o.height = h; return o; };
 
-let tierImg = null, tierUrl = null, fonts = null;
+let tierImg = null, tierUrl = null, fonts = null, sceneIcons = {};
 let sessions = [], posts = {}, profile = { streak: 0 };
 let cardStyle = 'classic', sceneReady = false;
 let current = null;        // selected session object
@@ -36,7 +36,7 @@ const pad2 = n => String(n).padStart(2, '0');
 function sceneData() {
   const end = new Date(current.endedAt || Date.now());
   return {
-    card: cardData(), tierImage: tierUrl, fonts, companion: current.companion || null,
+    card: cardData(), tierImage: tierUrl, fonts, icons: sceneIcons, companion: current.companion || null,
     clock: `${pad2(end.getHours())}:${pad2(end.getMinutes())}`,
     date: `${pad2(end.getDate())}/${pad2(end.getMonth() + 1)}/${end.getFullYear()}`,
   };
@@ -266,7 +266,7 @@ async function init() {
   if (!info || !info.ok) { $('status').textContent = 'Init error: ' + (info && info.error); return; }
   $('appv').textContent = 'Promethee ' + info.appVersion + (info.tokenWarning ? ', token unavailable so rank, league and FR are not filled in' : '');
   if (info.audience) lastAudience = info.audience;
-  frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts;
+  frNow = info.frNow || null; sessions = info.sessions; posts = info.posts || {}; profile = info.profile; fonts = info.fonts; sceneIcons = info.icons || {};
 
   for (const [name, url] of [['PrometheeCondensed', info.fonts.prometheeCondensed], ['DMSans', info.fonts.dmSans], ['DMMono', info.fonts.dmMono]]) {
     try { const ff = new FontFace(name, `url(${url})`); await ff.load(); document.fonts.add(ff); } catch {} // a missing font must never block startup

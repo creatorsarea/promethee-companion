@@ -9,6 +9,7 @@ html, body { width: 1920px; height: 1024px; margin: 0; overflow: hidden; backgro
   display: flex; align-items: center; gap: 12px; padding: 0 24px; z-index: 2; font-family: 'PromSans', 'Segoe UI', sans-serif; }
 .tb .ic { position: relative; width: 70px; height: 70px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 .tb .ic img { width: 46px; height: 46px; object-fit: contain; }
+.tb .ic .ph { width: 46px; height: 46px; border-radius: 11px; background: #2a2420; color: #cfc4b8; font: 600 24px/46px sans-serif; text-align: center; }
 .tb .ic.act { background: rgba(255, 255, 255, .08); }
 .tb .ic::after { content: ""; position: absolute; bottom: 3px; left: 50%; width: 8px; height: 4px; margin-left: -4px; border-radius: 2px; background: #9a8f86; opacity: 0; }
 .tb .ic.run::after { opacity: 1; }

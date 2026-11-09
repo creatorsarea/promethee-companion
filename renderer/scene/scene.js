@@ -61,9 +61,14 @@
 
   // ---------- taskbar ----------
   function buildTaskbar() {
-    const ic = k => `<div class="ic" data-app="${k}"><img src="../renderer/scene/icons/${k}.png" alt=""></div>`;
+    // icons come from the installed Promethee app (see lib/icons.js); neutral placeholders otherwise
+    const START = '<svg width="34" height="34" viewBox="0 0 24 24" fill="#e9e1d7">' + [5, 12, 19].map(y => [5, 12, 19].map(x => `<circle cx="${x}" cy="${y}" r="1.9"/>`).join('')).join('') + '</svg>';
+    const LETTER = { claude: 'C', vscode: 'V', warp: 'W', promethee: 'P' };
+    const inner = k => k === 'start' ? START
+      : (D && D.icons && D.icons[k]) ? `<img src="${D.icons[k]}" alt="">` : `<span class="ph">${LETTER[k] || ''}</span>`;
+    const ic = k => `<div class="ic" data-app="${k}">${inner(k)}</div>`;
     tb.innerHTML = ic('start') +
-      '<div class="search"><svg width="21" height="21" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#9a8f86" stroke-width="1.8"/><path d="M10.5 10.5L15 15" stroke="#9a8f86" stroke-width="1.8" stroke-linecap="round"/></svg>Rechercher</div>' +
+      '<div class="search"><svg width="21" height="21" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#9a8f86" stroke-width="1.8"/><path d="M10.5 10.5L15 15" stroke="#9a8f86" stroke-width="1.8" stroke-linecap="round"/></svg>Search</div>' +
       ic('vscode') + ic('claude') + ic('warp') + ic('promethee') +
       `<span class="sp"></span><div class="clk" id="clk"></div>`;
     ['vscode', 'claude', 'warp', 'promethee'].forEach(k => tb.querySelector(`[data-app="${k}"]`).classList.add('run'));

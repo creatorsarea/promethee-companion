@@ -12,6 +12,20 @@ your stats and publish the end-of-session card to your Promethee feed.
 This is an unofficial project, not affiliated with Promethee. It relies on the app's own local data and
 network calls, so a Promethee update can occasionally break it.
 
+## Preview
+
+The end-of-session card, animated (sample data):
+
+![Animated end-of-session card](docs/img/card-demo.webp)
+
+Card Studio, with your stats and a comparison with other people (sample data):
+
+![Stats tab](docs/img/window-stats.webp)
+
+And the Session tab, to publish or edit a card:
+
+![Session tab](docs/img/window-session.webp)
+
 ## Requirements
 
 - Windows

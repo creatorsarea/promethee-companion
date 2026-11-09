@@ -112,3 +112,10 @@ opened. Every failure (offline, rate limit, private repository, no release yet) 
 
 To announce an update: bump `version` in `package.json`, then publish a GitHub release whose tag is
 `v<version>`. Drafts and pre-releases are ignored.
+
+## Taskbar icons on the card
+
+The "companion" card shows a small taskbar. Its app icons are not shipped in this repository: `lib/icons.js` reads
+them from the installed Promethee app (`resources/assets/app-icons`, plus `simple-icons/warp.svg` for Warp) and
+passes them to the scene as data URLs. If a file is missing (for example after a Promethee update that moves
+assets), the scene shows a neutral lettered placeholder instead. The "start" button is a generic dot grid.
