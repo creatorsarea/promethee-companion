@@ -85,6 +85,20 @@ body{font-family:var(--b-font);color:var(--cream)}
 .warnbadge .tt{visibility:hidden;opacity:0;transition:.15s;position:absolute;bottom:170%;right:-10px;background:#000;color:#f4eadf;border:1px solid var(--mline);border-radius:8px;padding:6px 8px;font-size:10.5px;font-weight:400;width:180px;white-space:normal;text-align:left;line-height:1.35;text-transform:none;z-index:9;font-family:var(--b-font)}
 .warnbadge:hover .tt{visibility:visible;opacity:1}
 
+/* stats box on hover: the numbers give way to an "Open app" button (same box size) */
+.dwrap{position:relative}
+.dwrap .num,.dwrap .lbl{transition:color .15s}
+.hoveropen{position:absolute;inset:5px;display:flex;align-items:center;justify-content:center;border-radius:9px;background:var(--accent);color:#1a0d08;
+  font-family:var(--m-font);font-size:max(10px,calc(var(--m) * .062));letter-spacing:1px;text-transform:uppercase;font-weight:700;
+  opacity:0;transform:scale(.96);transition:opacity .15s,transform .15s;pointer-events:none;z-index:1}
+.fbox:hover .hoveropen{opacity:1;transform:none}
+.fbox:hover .dwrap{cursor:pointer}
+.fbox:hover .dwrap .num,.fbox:hover .dwrap .lbl{color:transparent}
+.dwrap:hover .hoveropen{background:#ef7448}
+.dwrap .warnbadge{z-index:2}
+#root.dragging .hoveropen{opacity:0}
+#root.dragging .dwrap .num.sw{color:var(--accent)}#root.dragging .dwrap .num.ml{color:var(--bad)}#root.dragging .dwrap .num.fc{color:var(--cream)}#root.dragging .dwrap .lbl{color:var(--mdim)}
+
 /* idle: open button */
 .openbtn{display:block;margin:7px;padding:7px 14px;border:0;border-radius:9px;background:var(--accent);color:#1a0d08;font-family:var(--m-font);font-size:max(10px,calc(var(--m) * .062));
   letter-spacing:1px;text-transform:uppercase;font-weight:700;cursor:pointer}
