@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies (Electron binary not needed for checks)
+        run: npm install --no-audit --no-fund
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      - name: Syntax check
+        shell: bash
+        run: |
+          set -e
+          for f in $(git ls-files '*.js'); do node --check "$f"; done
+      - name: Audit (high and above)
+        run: npm audit --audit-level=high
