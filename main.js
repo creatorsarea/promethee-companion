@@ -202,6 +202,8 @@ ipcMain.handle('studio:sceneBegin', async (_e, data) => {
       show: false, width: 1920, height: 1024, useContentSize: true, frame: false,
       webPreferences: { offscreen: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
     });
+    // recent Electron versions clamp an offscreen window to the screen size at creation: force the real size
+    sceneWin.setContentSize(1920, 1024);
     sceneWin.webContents.setFrameRate(60);
     await sceneWin.loadFile(path.join(__dirname, 'renderer', 'scene', 'scene.html'), { query: { capture: '1' } });
     await sceneWin.webContents.executeJavaScript(`window.__scene.setup(${JSON.stringify(data)})`);

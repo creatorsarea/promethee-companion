@@ -29,7 +29,7 @@ And the Session tab, to publish or edit a card:
 ## Requirements
 
 - Windows
-- [Node.js](https://nodejs.org) 18 or newer
+- [Node.js](https://nodejs.org) 22.12 or newer (older versions cannot install the current Electron)
 - The Promethee desktop app, installed, signed in, and opened at least once
 
 ## Install
