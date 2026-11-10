@@ -68,10 +68,12 @@
       key = 'stats:' + JSON.stringify([s.switches, s.penalty, s.focus, s.late, v.paused, ch && ch.id, ch && ch.xp]);
       var warn = s.late ? '<span class="warnbadge">!<span class="tt">Companion started after the session began: idle time before it launched is unknown, so focus may differ slightly from Promethee.</span></span>' : '';
       html = (ch ? '<div class="chal" id="chal"><span class="chal-k">Challenge</span><span class="chal-xp">+' + ch.xp + ' XP</span><span class="chal-t" id="chalT">--:--</span></div>' : '') +
-        (v.paused ? '<span class="paused-tag">Paused</span>' : '') + '<div class="dash">' +
+        (v.paused ? '<span class="paused-tag">Paused</span>' : '') + '<div class="dwrap"><div class="dash">' +
         '<div class="stat" id="statSw"><span class="num sw">' + s.switches + '</span><span class="lbl">switch</span></div>' +
         '<div class="stat"><span class="num ml">' + (s.penalty > 0 ? '-' + s.penalty : '0') + '</span><span class="lbl">penalty</span></div>' +
-        '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>';
+        '<div class="stat"><span class="num fc">' + s.focus + '</span><span class="lbl">focus ' + warn + '</span></div></div>' +
+        // shown over the stats on hover, for people who don't know about the double-click (same size: the box height docks the window)
+        '<span class="hoveropen" aria-hidden="true">Open app</span></div>';
     }
     if (key === boxKey) return;
     boxKey = key;
@@ -178,16 +180,23 @@
     if (e.target.closest('.warnbadge') || e.target.closest('.openbtn')) return;
     down = { x: e.screenX, y: e.screenY };
   });
+  var justDragged = false, lastOpen = 0;
   window.addEventListener('mouseup', function () {
     if (!down) return;
-    if (dragging) { window.companion.dragEnd(); setDragging(false); }
+    if (dragging) { window.companion.dragEnd(); setDragging(false); justDragged = true; setTimeout(function () { justDragged = false; }, 0); }
     down = null;
   });
-  fbox.addEventListener('click', function (e) { if (e.target.closest('.openbtn')) window.companion.click(); });
-  // during a session there is no button: double-click the companion (or its box) to open Card Studio
+  // one open per gesture: a double-click also fires two clicks
+  function openStudio() { var now = Date.now(); if (now - lastOpen < 700) return; lastOpen = now; window.companion.click(); }
+  fbox.addEventListener('click', function (e) {
+    if (e.target.closest('.openbtn')) return openStudio();
+    // stats box: a plain click (not the end of a drag, not on the warning badge) opens Card Studio, like the hover button says
+    if (!justDragged && e.target.closest('.dwrap') && !e.target.closest('.warnbadge')) openStudio();
+  });
+  // the companion itself (and its box) still opens Card Studio on double-click
   window.addEventListener('dblclick', function (e) {
     if (!(e.target.closest && e.target.closest('.hit')) || e.target.closest('.openbtn') || e.target.closest('.warnbadge')) return;
-    window.companion.click();
+    openStudio();
   });
   document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); } });
 
