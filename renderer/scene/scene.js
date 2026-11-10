@@ -64,20 +64,28 @@
     // icons come from the installed Promethee app (see lib/icons.js); neutral placeholders otherwise
     const START = '<svg width="34" height="34" viewBox="0 0 24 24" fill="#e9e1d7">' + [5, 12, 19].map(y => [5, 12, 19].map(x => `<circle cx="${x}" cy="${y}" r="1.9"/>`).join('')).join('') + '</svg>';
     const LETTER = { claude: 'C', vscode: 'V', warp: 'W', promethee: 'P' };
-    const inner = k => k === 'start' ? START
-      : (D && D.icons && D.icons[k]) ? `<img src="${D.icons[k]}" alt="">` : `<span class="ph">${LETTER[k] || ''}</span>`;
-    const ic = k => `<div class="ic" data-app="${k}">${inner(k)}</div>`;
-    tb.innerHTML = ic('start') +
-      '<div class="search"><svg width="21" height="21" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#9a8f86" stroke-width="1.8"/><path d="M10.5 10.5L15 15" stroke="#9a8f86" stroke-width="1.8" stroke-linecap="round"/></svg>Search</div>' +
-      ic('vscode') + ic('claude') + ic('warp') + ic('promethee') +
-      `<span class="sp"></span><div class="clk" id="clk"></div>`;
+    const SEARCH = '<svg width="21" height="21" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="5" fill="none" stroke="#9a8f86" stroke-width="1.8"/><path d="M10.5 10.5L15 15" stroke="#9a8f86" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    // static markup only (constants above); everything dynamic is built with DOM APIs
+    const staticNode = html => { const t = document.createElement('template'); t.innerHTML = html; return t.content; };
+    const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+    const ic = k => {
+      const d = el('div', 'ic'); d.dataset.app = k;
+      const src = D && D.icons && D.icons[k];
+      if (k === 'start') d.appendChild(staticNode(START));
+      else if (typeof src === 'string' && src.startsWith('data:image/')) { const img = el('img'); img.src = src; img.alt = ''; d.appendChild(img); }
+      else { const ph = el('span', 'ph'); ph.textContent = LETTER[k] || ''; d.appendChild(ph); }
+      return d;
+    };
+    const search = el('div', 'search'); search.appendChild(staticNode(SEARCH)); search.appendChild(document.createTextNode('Search'));
+    const clk = el('div', 'clk'); clk.id = 'clk';
+    tb.replaceChildren(ic('start'), search, ic('vscode'), ic('claude'), ic('warp'), ic('promethee'), el('span', 'sp'), clk);
     ['vscode', 'claude', 'warp', 'promethee'].forEach(k => tb.querySelector(`[data-app="${k}"]`).classList.add('run'));
     appPos = {};
     tb.querySelectorAll('.ic').forEach(e => { const r = e.getBoundingClientRect(); appPos[e.dataset.app] = [r.left + r.width / 2 - 2, r.top + r.height / 2 - 4]; });
   }
   function setClock() {
     const el = document.getElementById('clk'); if (!el || !D) return;
-    el.innerHTML = (D.clock || '') + '<br>' + (D.date || '');
+    el.replaceChildren(document.createTextNode(D.clock || ''), document.createElement('br'), document.createTextNode(D.date || ''));
   }
 
   // ---------- per-frame drawing ----------
