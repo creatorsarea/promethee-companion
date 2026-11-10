@@ -22,6 +22,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # a release created from the GitHub UI already exists when the tag push fires this workflow
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists, nothing to do"; exit 0
+          fi
           flags=""
           case "$GITHUB_REF_NAME" in
             *-*) flags="--prerelease" ;;  # e.g. v2.1.0-beta.1 must never become "latest"
