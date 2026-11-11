@@ -1,5 +1,5 @@
 'use strict';
-// Promethee Companion: a small mascot above the taskbar that shows the live session
+// Promethee Companion: a small mascot above the taskbar (Windows) / Dock (macOS) that shows the live session
 // state (switches, switch penalty, focus score computed like Promethee) and warns on an
 // app switch. Clicking it opens Card Studio (end-of-session card generator).
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, powerMonitor, shell } = require('electron');
@@ -35,7 +35,9 @@ const foreground = require('./lib/foreground');
 
 const APP_TITLE = 'Promethee Companion';
 app.setName('promethee-companion');
-app.setAppUserModelId('fr.creatorsarea.promethee-companion');
+const IS_MAC = process.platform === 'darwin';
+if (process.platform === 'win32') app.setAppUserModelId('fr.creatorsarea.promethee-companion');
+if (IS_MAC && app.dock) app.dock.hide();   // menu bar app: no Dock icon
 
 // ---------------- config ----------------
 const CONFIG = path.join(app.getPath('userData'), 'config.json');
@@ -272,6 +274,7 @@ function createCompanion() {
     webPreferences: { preload: path.join(__dirname, 'preload-companion.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   });
   compWin.setAlwaysOnTop(true, 'screen-saver');
+  if (IS_MAC) compWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   compWin.setIgnoreMouseEvents(true, { forward: true });
   compWin.loadFile(path.join(__dirname, 'companion', 'index.html'));
   compWin.once('ready-to-show', () => { if (!readConfig().companionHidden) compWin.showInactive(); pushView(true); });
@@ -407,6 +410,9 @@ function trayIcon(size) {
   return img.crop({ x: 96, y: 98, width: 342, height: 352 }).resize({ width: size, height: size, quality: 'best' });
 }
 
+// On macOS login items only work for a packaged app (a dev run would register Electron itself).
+const canAutoLaunch = () => !IS_MAC || app.isPackaged;
+
 const loginArgs = () => (app.isPackaged ? [] : [app.getAppPath()]);
 function setAutoLaunch(on) {
   app.setLoginItemSettings({ openAtLogin: on, path: process.execPath, args: loginArgs() });
@@ -432,8 +438,10 @@ function buildTrayMenu() {
     })) },
     { label: 'Reset position (bottom right)', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } },
     { type: 'separator' },
-    { label: 'Launch at Windows startup', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
-    { type: 'separator' },
+    ...(canAutoLaunch() ? [
+      { label: IS_MAC ? 'Launch at login' : 'Launch at Windows startup', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
+      { type: 'separator' },
+    ] : []),
     { label: 'Quit', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
 }
@@ -452,14 +460,14 @@ function boot() {
   foreground.start();
   createCompanion();
 
-  tray = new Tray(trayIcon(32));
+  tray = new Tray(trayIcon(IS_MAC ? 18 : 32));
   tray.setToolTip(APP_TITLE);
   tray.on('click', () => toggleCompanion());
   tray.on('double-click', openStudio);
   buildTrayMenu();
 
   const cfg = readConfig();
-  if (cfg.autoLaunch === undefined) setAutoLaunch(true);   // first run: start with Windows
+  if (cfg.autoLaunch === undefined && canAutoLaunch()) setAutoLaunch(true);   // first run: start at login
 
   pollDb().then(() => pushView(true));
   setInterval(pollDb, 2000);
