@@ -35,8 +35,9 @@ sql.js in a separate thread, only when it changes):
 ## Card Studio
 
 - **Data**: last sessions read from the local DB.
-- **Emblems / fonts**: read from `...\Local\Promethee\app-<latest version>\resources\assets\`.
-- **Token**: read and decrypted locally from `session.bin` (DPAPI + AES-GCM), never logged or
+- **Emblems / fonts**: read from `...\Local\Promethee\app-<latest version>\resources\assets\` (Windows) or `/Applications/Promethee.app/Contents/Resources/assets/` (macOS).
+- **Token**: read and decrypted locally from `session.bin` (Windows: DPAPI + AES-GCM; macOS: Keychain item
+  "Promethee Safe Storage" -> PBKDF2 -> AES-128-CBC), never logged or
   sent anywhere else. If it is expired, open Promethee and retry.
 - **Publishing**: uploads the raw WebP (and its `.d.webp` display copy if the long edge exceeds
   1200 px), then calls `publish_feed_session`. "Publish hidden" goes through
@@ -119,3 +120,18 @@ The "companion" card shows a small taskbar. Its app icons are not shipped in thi
 them from the installed Promethee app (`resources/assets/app-icons`, plus `simple-icons/warp.svg` for Warp) and
 passes them to the scene as data URLs. If a file is missing (for example after a Promethee update that moves
 assets), the scene shows a neutral lettered placeholder instead. The "start" button is a generic dot grid.
+
+## Platform differences
+
+| | Windows | macOS |
+|---|---|---|
+| Promethee data | `%APPDATA%\Promethee` | `~/Library/Application Support/Promethee` |
+| Promethee app | `%LOCALAPPDATA%\Promethee\app-x.y.z` | `/Applications/Promethee.app` (or `~/Applications`) |
+| Token key | DPAPI (PowerShell) + `Local State` | login Keychain (`security`), asks once |
+| Foreground app | PowerShell + user32 | `osascript` (JXA) + `NSWorkspace`, no permission needed |
+| Companion position | above the taskbar | above the Dock (menu bar and Dock excluded from the work area) |
+| Tray | notification area | menu bar, no Dock icon |
+| Start at login | on by default | only for a packaged app |
+
+On macOS the foreground reader records the executable name (lowercased), which is what Promethee stores
+as `exe_name` there, so the alert compares the same values as the database.

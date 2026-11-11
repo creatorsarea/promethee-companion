@@ -1,12 +1,10 @@
 # Promethee Companion
 
-> **Windows only, for now.** This project has only been developed and tested on Windows. It has not
-> been tested on macOS and is not expected to work there as is. A pull request adding macOS support is
-> very welcome, I am open to it. The Windows specific parts are listed in
-> [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
+> **Windows and macOS.** Developed on Windows; macOS support was added afterwards. The platform
+> specific parts are listed in [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 
 A small desktop companion for the Promethee focus app. It sits above your
-Windows taskbar and follows your session live, and it includes **Card Studio**, where you can look at
+Windows taskbar (or macOS Dock) and follows your session live, and it includes **Card Studio**, where you can look at
 your stats and publish the end-of-session card to your Promethee feed.
 
 This is an unofficial project, not affiliated with Promethee. It relies on the app's own local data and
@@ -28,7 +26,7 @@ And the Session tab, to publish or edit a card:
 
 ## Requirements
 
-- Windows
+- Windows, or macOS (menu bar app, no Dock icon)
 - [Node.js](https://nodejs.org) 22.12 or newer (older versions cannot install the current Electron)
 - The Promethee desktop app, installed, signed in, and opened at least once
 
@@ -41,9 +39,13 @@ npm install
 npm start
 ```
 
-The companion appears above your taskbar and an icon is added to the notification area. Click the
-companion to open Card Studio. On first launch it registers itself to start with Windows; you can turn
-that off from the tray icon menu.
+The companion appears above your taskbar (Dock on macOS) and an icon is added to the notification area
+(menu bar on macOS). Click the companion to open Card Studio. On Windows, on first launch it registers
+itself to start with Windows; you can turn that off from the tray icon menu. On macOS, start at login is
+only offered for a packaged app, not for `npm start`.
+
+On macOS, the first start asks to let the companion read the "Promethee Safe Storage" item of your
+Keychain (it is how your Promethee session token is decrypted locally). Choose **Always Allow**.
 
 ## Update
 
@@ -71,12 +73,13 @@ Card Studio header.
 |---|---|
 | `Token expired` or `token unavailable` | Open the Promethee app so it refreshes your session, then restart the companion. |
 | `Promethee public key not found` | Update the Promethee app to its latest version, then restart the companion. |
-| `No app-x.y.z folder` | The Promethee app is not installed for your user. Install it and open it once. |
+| `No app-x.y.z folder` or `No Promethee.app` | The Promethee app is not installed for your user. Install it and open it once. |
+| `Cannot read the Promethee key from the macOS Keychain` | Open Promethee once, then allow the Keychain access prompt ("Always Allow"). |
 | The companion is off screen or in the wrong place | Right-click the tray icon and choose "Reset position (bottom right)". |
 
 ## Contributing
 
-Issues and pull requests are welcome, in particular macOS support. See
+Issues and pull requests are welcome. See
 [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) for how the numbers are computed, which Promethee routes are
 used, and the layout of the code.
 
