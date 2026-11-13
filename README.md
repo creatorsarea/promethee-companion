@@ -49,7 +49,7 @@ that off from the tray icon menu.
 ## macOS
 
 - **In the notch**: the companion hides in the MacBook notch while you focus. When you switch away
-  from your app, it slides down out of the notch, angry, with the "Back to <app>" countdown, and goes
+  from your app, it springs out of the notch, angry, with the "Back to <app>" countdown, and goes
   back up when you return or when the switch is counted. It also peeks out briefly when a session
   starts or ends, and comes out when you hover the notch (click it to open Card Studio). Without a
   notch it does the same from the middle of the menu bar's bottom edge. To keep it always visible in

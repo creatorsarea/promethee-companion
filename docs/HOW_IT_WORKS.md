@@ -13,10 +13,15 @@ installation and usage.
 
 - **Click**: opens Card Studio. **Drag**: moves the companion (position is remembered). On macOS
   in the notch, the place is fixed and dragging does nothing.
-- **macOS notch**: hidden while idle or focused; slides out of the notch for the alert, on hover of
-  the notch, and for short peeks (session start/end, a switch counted, a challenge done). The
-  window never moves: a black panel inside a transparent, click-through window is moved with a CSS
-  transform (the part of the window outside the panel ignores the mouse).
+- **macOS notch**: hidden while idle or focused; springs out of the notch for the alert, on hover of
+  the notch, and for short peeks (session start/end, a switch counted, a challenge done). It looks
+  and moves like boringNotch: a black NotchShape (top corners curving into the menu bar, rounded
+  bottom corners; radii 6/14 closed, 19/24 open) drawn in SVG, going from the exact notch size
+  (read from AppKit's `auxiliaryTopLeftArea`/`auxiliaryTopRightArea` and `safeAreaInsets`,
+  `lib/notch-mac.js`) to the content size with a damped spring (open: response 0.42 s, damping 0.8;
+  close: 0.45 s, 1.0), the content scaling from 0.8 at the top and fading in, clipped by the same
+  shape. The window itself never moves; outside the shape it is transparent and click-through.
+  `"notchWidth"` in `config.json` overrides the measured width.
 - **Tray icon**: show/hide, size (small/medium/large), reset position (bottom right),
   launch at startup, quit.
 - The window never takes focus, so Promethee keeps seeing your app.

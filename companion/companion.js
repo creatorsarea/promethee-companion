@@ -206,23 +206,96 @@
   });
   document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); setHover(false); } });
 
-  // ---- macOS notch: the panel hides in the notch and comes out on an alert, a hover or a peek ----
-  var notch = false, hovering = false, peekUntil = 0, peekTimer = null, leaveTimer = null;
+  // ---- macOS notch: hidden in the notch, springs out on an alert, a hover or a peek ----
+  // Same look and motion as boringNotch (ContentView.swift / NotchShape.swift): a black NotchShape
+  // whose top corners curve out into the menu bar and whose bottom corners are rounded, going from
+  // the notch's own size (top radius 6, bottom 14) to the open size (19, 24) with a spring
+  // (open: response 0.42 s, damping 0.8; close: 0.45 s, damping 1.0). The content scales from 0.8
+  // anchored at the top and fades in (smooth, 0.35 s), clipped by the same shape.
+  var notch = null, hovering = false, peekUntil = 0, peekTimer = null, leaveTimer = null;
+  var R_CLOSED = { top: 6, bottom: 14 }, R_OPEN = { top: 19, bottom: 24 }, PAD = 12;
+  var SPRING_OPEN = { response: 0.42, damping: 0.8 }, SPRING_CLOSE = { response: 0.45, damping: 1.0 }, SPRING_CONTENT = { response: 0.35, damping: 1.0 };
+  var nshape, npath, nclip, ncontent, nzone;
+  var shapeS = { x: 0, v: 0, to: 0 }, contentS = { x: 0, v: 0, to: 0 }, raf = 0, lastT = 0;
+
+  // NotchShape.path(in:) for a rect centred in the window, top at y=0
+  function notchPath(w, h, tr, br) {
+    var W = root.clientWidth, x0 = (W - w) / 2, x1 = x0 + w;
+    tr = Math.max(0, Math.min(tr, w / 4)); br = Math.max(0, Math.min(br, (w - 2 * tr) / 2, h - tr));
+    var f = function (n) { return n.toFixed(2); };
+    return 'M' + f(x0) + ' 0' +
+      'Q' + f(x0 + tr) + ' 0 ' + f(x0 + tr) + ' ' + f(tr) +
+      'L' + f(x0 + tr) + ' ' + f(h - br) +
+      'Q' + f(x0 + tr) + ' ' + f(h) + ' ' + f(x0 + tr + br) + ' ' + f(h) +
+      'L' + f(x1 - tr - br) + ' ' + f(h) +
+      'Q' + f(x1 - tr) + ' ' + f(h) + ' ' + f(x1 - tr) + ' ' + f(h - br) +
+      'L' + f(x1 - tr) + ' ' + f(tr) +
+      'Q' + f(x1 - tr) + ' 0 ' + f(x1) + ' 0Z';
+  }
+  // SwiftUI spring(response, dampingFraction), mass 1: stiffness (2pi/response)^2, damping 4pi*zeta/response
+  function stepSpring(s, p, dt) {
+    var k = Math.pow(2 * Math.PI / p.response, 2), c = 4 * Math.PI * p.damping / p.response;
+    for (var t = dt; t > 0; t -= 1 / 240) {           // fixed sub-steps: stable at any frame rate
+      var h = Math.min(t, 1 / 240);
+      s.v += (-k * (s.x - s.to) - c * s.v) * h;
+      s.x += s.v * h;
+    }
+    if (Math.abs(s.x - s.to) < 1e-3 && Math.abs(s.v) < 1e-3) { s.x = s.to; s.v = 0; return false; }
+    return true;
+  }
+  function frame(t) {
+    var dt = Math.min(0.05, lastT ? (t - lastT) / 1000 : 1 / 60); lastT = t;
+    var a = stepSpring(shapeS, shapeS.to ? SPRING_OPEN : SPRING_CLOSE, dt);
+    var b = stepSpring(contentS, SPRING_CONTENT, dt);
+    draw();
+    raf = a || b ? requestAnimationFrame(frame) : 0;
+    if (!raf) lastT = 0;
+  }
+  function draw() {
+    var top = notch.topPad, cw = ncontent.offsetWidth, ch = ncontent.offsetHeight;
+    var closed = { w: notch.width, h: top };
+    var open = { w: Math.max(notch.width + 2 * R_OPEN.top, cw + 2 * (R_OPEN.top + PAD)), h: top + ch + PAD };
+    var p = shapeS.x, L = function (a, b) { return a + (b - a) * p; };
+    var w = L(closed.w, open.w), h = Math.max(0, L(closed.h, open.h));
+    var d = notchPath(w, h, L(R_CLOSED.top, R_OPEN.top), L(R_CLOSED.bottom, R_OPEN.bottom));
+    npath.setAttribute('d', d);
+    nclip.style.clipPath = "path('" + d + "')";
+    // boringNotch: shadow while open (black 0.7, radius 6)
+    nshape.style.filter = p > 0.05 ? 'drop-shadow(0 0 6px rgba(0,0,0,' + (0.7 * Math.min(1, p)).toFixed(2) + '))' : 'none';
+    var c = contentS.x;
+    ncontent.style.top = top + 'px';
+    ncontent.style.opacity = Math.max(0, Math.min(1, c)).toFixed(3);
+    ncontent.style.transform = 'translateX(-50%) scale(' + (0.8 + 0.2 * c).toFixed(4) + ')';
+    root.classList.toggle('open', shapeS.to === 1);
+  }
+  function animate() { if (!raf) raf = requestAnimationFrame(frame); }
+
   function setupNotch(n) {
-    notch = true;
+    notch = n;
     var de = document.documentElement;
     de.classList.add('notch'); if (n.attached) de.classList.add('notch-attached');
-    de.style.setProperty('--top', (n.topPad || 0) + 'px');
-    var panel = document.createElement('div'); panel.className = 'npanel';
-    panel.appendChild(mascot); panel.appendChild(document.querySelector('.front'));
-    var zone = document.createElement('div'); zone.className = 'nzone hit';
-    root.appendChild(panel); root.appendChild(zone);
+    var NS = 'http://www.w3.org/2000/svg';
+    nshape = document.createElementNS(NS, 'svg'); nshape.setAttribute('class', 'nshape');
+    npath = document.createElementNS(NS, 'path'); nshape.appendChild(npath);
+    nclip = document.createElement('div'); nclip.className = 'nclip';
+    ncontent = document.createElement('div'); ncontent.className = 'ncontent';
+    ncontent.appendChild(mascot); ncontent.appendChild(document.querySelector('.front'));
+    nclip.appendChild(ncontent);
+    nzone = document.createElement('div'); nzone.className = 'nzone hit';
+    nzone.style.width = n.width + 'px'; nzone.style.height = Math.max(n.topPad, 6) + 'px';
+    root.appendChild(nshape); root.appendChild(nclip); root.appendChild(nzone);
+    draw();
     updateOpen();
+    // the box changes size (stats, countdown, +1...): follow it while open
+    if (window.ResizeObserver) new ResizeObserver(function () { if (shapeS.x > 0) { draw(); } }).observe(ncontent);
   }
   function updateOpen() {
     if (!notch) return;
     var alert = !!(view && view.mode === 'alert');
-    root.classList.toggle('open', alert || hovering || Date.now() < peekUntil);
+    var open = alert || hovering || Date.now() < peekUntil ? 1 : 0;
+    if (open === shapeS.to) return;
+    shapeS.to = open; contentS.to = open;
+    animate();
   }
   // short look out of the notch (session start / end, a switch counted, a challenge done)
   function peek(ms) {
@@ -237,11 +310,14 @@
     if (on) { hovering = true; updateOpen(); }
     else leaveTimer = setTimeout(function () { hovering = false; updateOpen(); }, 500);
   }
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    SPRING_OPEN = SPRING_CLOSE = SPRING_CONTENT = { response: 0.05, damping: 1 };
+  }
 
   // ---- boot ----
   window.companion.init().then(function (cfg) {
     document.documentElement.style.setProperty('--m', cfg.size + 'px');
-    if (cfg.notch) setupNotch(cfg.notch);
+    if (cfg.notch) setupNotch(cfg.notch);   // macOS: lives in the notch (below)
     if (cfg.fonts) {
       var st = document.createElement('style');
       st.textContent = "@font-face{font-family:'PromDisplay';src:url(" + cfg.fonts.display + ")}" +

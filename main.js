@@ -33,6 +33,7 @@ const { computeIdle, createSampler } = require('./lib/idle');
 const { computeView } = require('./lib/companion-view');
 const foreground = require('./lib/foreground');
 const macLoginItem = require('./lib/login-item-mac');
+const macNotch = require('./lib/notch-mac');
 
 const IS_MAC = process.platform === 'darwin';
 
@@ -239,20 +240,26 @@ function compSize() { return SIZES[readConfig().companionSize] || SIZES.M; }
 // taskbar"). It stays hidden there while you focus and slides down, angry, when you leave your app
 // (the alert), or when you hover the notch. The bottom-right corner stays available from the menu.
 const notchMode = () => IS_MAC && readConfig().macPlacement !== 'corner';
-// The menu bar height is the gap between the display bounds and its work area. Notched MacBook
-// displays have a ~37-38 pt menu bar (24-25 pt elsewhere). With a notch, the window starts at the
-// very top of the screen so the panel comes out of the notch (its top part stays behind it, black
-// on black); without one, it starts under the menu bar and comes out of its bottom edge.
-const NOTCH_MENU_BAR_MIN = 32;
+// The notch size comes from AppKit (lib/notch-mac.js). If that fails, a built-in display whose
+// menu bar (bounds minus work area) is 32 pt or more is taken as notched (37-38 pt there, 24-25 pt
+// elsewhere), with boringNotch's default width. With a notch, the window starts at the very top of
+// the screen and the shape grows out of the notch; without one, it starts under the menu bar and
+// grows out of its bottom edge. "notchWidth" in config.json overrides the width.
+const NOTCH_MENU_BAR_MIN = 32, NOTCH_DEFAULT_WIDTH = 185;
+let notchCache = null;
 function notchGeometry() {
   const disp = screen.getPrimaryDisplay(), b = disp.bounds, wa = disp.workArea;
-  const menuBar = Math.max(0, wa.y - b.y);
-  const attached = !!disp.internal && menuBar >= NOTCH_MENU_BAR_MIN;
-  return { disp, attached, top: attached ? b.y : wa.y, topPad: attached ? menuBar : 0 };
+  const key = [b.x, b.y, b.width, b.height, wa.y].join(',');
+  if (!notchCache || notchCache.key !== key) notchCache = { key, real: macNotch.measureNotch() };
+  const menuBar = Math.max(0, wa.y - b.y), real = notchCache.real;
+  const attached = real ? true : !!disp.internal && menuBar >= NOTCH_MENU_BAR_MIN;
+  const width = Number(readConfig().notchWidth) || (real ? real.width : NOTCH_DEFAULT_WIDTH);
+  return { disp, attached, top: attached ? b.y : wa.y, topPad: attached ? (real ? real.height : menuBar) : 0, width };
 }
 function compBounds(m) {
-  // notch: room for the panel (mascot + box) under the notch; the rest is transparent and click-through
-  if (notchMode()) return { width: Math.round(m * 2.4), height: notchGeometry().topPad + Math.round(m * 1.05) };
+  // notch: room for the open shape (mascot + box) under the notch, its spring overshoot and its
+  // shadow; the rest of the window is transparent and click-through
+  if (notchMode()) return { width: Math.round(m * 2.6), height: Math.round(notchGeometry().topPad + m * 1.15) };
   // mascot + headroom for the alert flames + room for the box in front of it
   return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
 }
@@ -304,6 +311,8 @@ function createCompanion() {
     // macOS: focusable:false alone still activates the app on click/drag (Promethee would then see
     // Electron in the foreground). A non-activating panel never takes the focus, like Windows.
     ...(IS_MAC ? { type: 'panel' } : {}),
+    // macOS pushes windows below the menu bar; the notch window must start at the top of the screen
+    ...(IS_MAC ? { enableLargerThanScreen: true } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload-companion.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   });
   compWin.setAlwaysOnTop(true, 'screen-saver');
@@ -331,7 +340,7 @@ ipcMain.handle('companion:init', () => {
     };
   } catch {}
   let notch = null;
-  if (notchMode()) { const g = notchGeometry(); notch = { attached: g.attached, topPad: g.topPad }; }
+  if (notchMode()) { const g = notchGeometry(); notch = { attached: g.attached, topPad: g.topPad, width: g.width }; }
   return { fonts, size: compSize(), notch };
 });
 ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMouseEvents(!over, { forward: true }); });

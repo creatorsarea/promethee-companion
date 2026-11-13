@@ -140,24 +140,21 @@ body{font-family:var(--b-font);color:var(--cream)}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 
 /* ---- macOS: in the notch ----
-   One black panel, centred on the notch: its top (--top, the menu bar height on a notched screen)
-   stays behind the notch, the mascot and the box sit under it. The panel is pushed up out of the
-   window (invisible) and slides down when it opens: alert, hover on the notch, short peeks. */
-html.notch{--top:0px}
+   A black shape drawn like boringNotch's NotchShape (companion.js) springs out of the notch; the
+   mascot and the box sit in it, clipped by the same shape. Closed, the shape is exactly the notch
+   (black on black: nothing shows). Opened by the alert, a hover on the notch, or short peeks. */
 html.notch #root{overflow:hidden}
-html.notch .npanel{position:absolute;left:50%;top:0;display:flex;align-items:center;gap:6px;padding:calc(var(--top) + 6px) 14px 8px 8px;
-  background:#000;border-radius:0 0 18px 18px;transform:translate(-50%,calc(-100% - 40px));transition:transform .26s cubic-bezier(.4,0,1,1)}
-html.notch #root.open .npanel{transform:translate(-50%,0);transition:transform .42s cubic-bezier(.16,1,.3,1)}
-/* without a notch the panel comes out of the bottom edge of the menu bar */
-html.notch:not(.notch-attached) .npanel{border:1px solid var(--mline);border-top:0}
+html.notch .nshape{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+html.notch .nshape path{fill:#000}
+html.notch .nclip{position:absolute;inset:0;pointer-events:none}
+html.notch .ncontent{position:absolute;left:50%;top:0;display:flex;align-items:center;gap:6px;padding:0 4px 0 0;transform-origin:50% 0;opacity:0;pointer-events:auto}
 html.notch .mascot{position:relative;right:auto;bottom:auto;flex:none;width:calc(var(--m) * .5);height:calc(var(--m) * .5)}
 html.notch .front{position:relative;right:auto;bottom:auto;width:auto;height:auto;flex:none}
 html.notch .fbox{position:relative;left:auto;bottom:auto;transform:none;background:transparent;border:0;box-shadow:none;max-width:calc(var(--m) * 1.3)}
 html.notch .fbox.is-alert{background:transparent;padding:2px 6px}
 html.notch .hitbox{cursor:pointer}
 html.notch .fbox,html.notch #root.dragging .fbox{cursor:default}
-html.notch .chal{bottom:auto;top:100%;transform:translate(-50%,6px)}
-html.notch .plus1{bottom:auto;top:40%}
-/* hover zone over the notch itself: hovering it opens the panel */
-html.notch .nzone{position:absolute;left:50%;top:0;transform:translateX(-50%);width:calc(var(--m) * 1.2);height:max(var(--top),6px)}
-@media(prefers-reduced-motion:reduce){html.notch .npanel{transition:none!important}}
+html.notch .chal{position:static;transform:none;margin:4px auto 0;width:max-content}
+html.notch .plus1{bottom:auto;top:30%}
+/* hover zone over the notch itself: hovering it opens the shape */
+html.notch .nzone{position:absolute;left:50%;top:0;transform:translateX(-50%)}
