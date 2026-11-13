@@ -154,6 +154,8 @@ html.notch .fbox{position:relative;left:auto;bottom:auto;transform:none;backgrou
 html.notch .fbox.is-alert{background:transparent;padding:2px 6px}
 html.notch .hitbox{cursor:pointer}
 html.notch .fbox,html.notch #root.dragging .fbox{cursor:default}
+/* the alert flames rise above the mascot: lower it so their tips stay under the notch's bottom edge */
+html.notch .mascot.st-alert{margin-top:calc(var(--m) * .14)}
 html.notch .chal{position:static;transform:none;margin:4px auto 0;width:max-content}
 /* hover zone over the notch itself: hovering it opens the shape */
 html.notch .nzone{position:absolute;left:50%;top:0;transform:translateX(-50%)}
