@@ -258,8 +258,9 @@ function notchGeometry() {
 }
 function compBounds(m) {
   // notch: room for the open shape (mascot + box) under the notch, its spring overshoot and its
-  // shadow; the rest of the window is transparent and click-through
-  if (notchMode()) return { width: Math.round(m * 2.6), height: Math.round(notchGeometry().topPad + m * 1.15) };
+  // shadow, plus room under it for hover notes and the "+XP" drop (companion.css, html.notch);
+  // the rest of the window is transparent and click-through
+  if (notchMode()) return { width: Math.round(m * 2.6), height: Math.round(notchGeometry().topPad + m * 1.15 + m * 0.75) };
   // mascot + headroom for the alert flames + room for the box in front of it
   return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
 }

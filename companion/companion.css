@@ -155,6 +155,18 @@ html.notch .fbox.is-alert{background:transparent;padding:2px 6px}
 html.notch .hitbox{cursor:pointer}
 html.notch .fbox,html.notch #root.dragging .fbox{cursor:default}
 html.notch .chal{position:static;transform:none;margin:4px auto 0;width:max-content}
-html.notch .plus1{bottom:auto;top:30%}
 /* hover zone over the notch itself: hovering it opens the shape */
 html.notch .nzone{position:absolute;left:50%;top:0;transform:translateX(-50%)}
+
+/* What pops out of the box (the "!" note, "+1", "+XP") would rise into the menu bar and the
+   physical notch, and be cut by the shape's clip. In the notch it all lives in .nbelow, a layer
+   that starts at the open shape's bottom edge (--nbottom, companion.js), and travels down. */
+html.notch .nbelow{position:absolute;left:0;right:0;top:var(--nbottom,0px);bottom:0;pointer-events:none;z-index:20}
+html.notch .warnbadge .tt{display:none}
+.ntip{position:absolute;left:50%;top:8px;transform:translate(-50%,-4px);width:min(260px,calc(100% - 16px));background:#000;color:#f4eadf;border:1px solid var(--mline);border-radius:10px;padding:8px 10px;
+  font:400 11px/1.4 var(--b-font);text-align:left;opacity:0;visibility:hidden;transition:opacity .15s,transform .15s,visibility .15s;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+.ntip.on{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.nbelow .plus1{bottom:auto;top:6px;animation-name:plus1down}
+.nbelow .xpwin{top:8px;animation-name:xpdown}
+@keyframes plus1down{0%{opacity:0;transform:translate(-50%,-10px) scale(.5)}12%{opacity:1;transform:translate(-50%,0) scale(1.35)}25%{transform:translate(-50%,4px) scale(1)}70%{opacity:1}100%{opacity:0;transform:translate(-50%,40px) scale(1)}}
+@keyframes xpdown{0%{opacity:0;transform:translate(-50%,-20px) scale(.4)}14%{opacity:1;transform:translate(-50%,0) scale(1.25)}26%{transform:translate(-50%,4px) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,44px) scale(1)}}

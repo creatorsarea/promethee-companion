@@ -112,7 +112,8 @@
     peek(2600);
     var c = document.getElementById('chal'); if (c) c.remove();
     var p = document.createElement('span'); p.className = 'xpwin'; p.textContent = '+' + xp + ' XP';
-    flash.appendChild(p); setTimeout(function () { p.remove(); }, 2300);
+    popOut(p, flash);
+    setTimeout(function () { p.remove(); }, 2300);
     fbox.classList.remove('gold'); void fbox.offsetWidth; fbox.classList.add('gold');
     setTimeout(function () { fbox.classList.remove('gold'); }, 1400);
     mascot.classList.add('pop'); setTimeout(function () { mascot.classList.remove('pop'); }, 360);
@@ -132,7 +133,7 @@
     peek(1800);
     var sw = document.getElementById('statSw'); if (!sw) return;
     var p = document.createElement('span'); p.className = 'plus1'; p.textContent = '+1';
-    sw.appendChild(p); setTimeout(function () { p.remove(); }, 1700);
+    popOut(p, sw, sw); setTimeout(function () { p.remove(); }, 1700);
     sw.classList.remove('hit1'); void sw.offsetWidth; sw.classList.add('hit1');
     setTimeout(function () { sw.classList.remove('hit1'); }, 1100);
   }
@@ -179,6 +180,7 @@
   window.addEventListener('mousemove', function (e) {
     var hit = !!(e.target && e.target.closest && e.target.closest('.hit'));
     if (hit !== over && !down) { over = hit; window.companion.hover(hit); setHover(hit); }
+    if (notch) showTip(e.target.closest && e.target.closest('.warnbadge'));
     if (down && !dragging && (Math.abs(e.screenX - down.x) > 3 || Math.abs(e.screenY - down.y) > 3)) { setDragging(true); window.companion.dragStart(); }
   });
   window.addEventListener('mousedown', function (e) {
@@ -204,7 +206,7 @@
     if (!(e.target.closest && e.target.closest('.hit')) || e.target.closest('.openbtn') || e.target.closest('.warnbadge')) return;
     openStudio();
   });
-  document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); setHover(false); } });
+  document.addEventListener('mouseleave', function () { showTip(null); if (!down && over) { over = false; window.companion.hover(false); setHover(false); } });
 
   // ---- macOS notch: hidden in the notch, springs out on an alert, a hover or a peek ----
   // Same look and motion as boringNotch (ContentView.swift / NotchShape.swift): a black NotchShape
@@ -255,6 +257,7 @@
     var top = notch.topPad, cw = ncontent.offsetWidth, ch = ncontent.offsetHeight;
     var closed = { w: notch.width, h: top };
     var open = { w: Math.max(notch.width + 2 * R_OPEN.top, cw + 2 * (R_OPEN.top + PAD)), h: top + ch + PAD };
+    root.style.setProperty('--nbottom', open.h + 'px');   // where the layer under the shape starts
     var p = shapeS.x, L = function (a, b) { return a + (b - a) * p; };
     var w = L(closed.w, open.w), h = Math.max(0, L(closed.h, open.h));
     var d = notchPath(w, h, L(R_CLOSED.top, R_OPEN.top), L(R_CLOSED.bottom, R_OPEN.bottom));
@@ -270,6 +273,32 @@
   }
   function animate() { if (!raf) raf = requestAnimationFrame(frame); }
 
+  // ---- what pops out of the box: the "+1", the "+XP" reward, the "!" note ----
+  // Above the taskbar these rise over the box. In the notch, everything above the open shape's
+  // bottom edge is the menu bar and the physical notch (hidden), and the shape clips its content.
+  // So there they all go into one layer that starts at the shape's bottom edge (.nbelow, outside
+  // the clip, top = --nbottom set by draw()), and companion.css (html.notch .nbelow) makes them
+  // appear under the shape and travel down. The window is taller for that (compBounds, main.js).
+  var nbelow = null, ntip = null;
+  // host: where the element goes outside the notch; under: element to stay centred under in the notch
+  function popOut(el, host, under) {
+    if (!notch) { host.appendChild(el); return; }
+    if (under) {
+      // centre of `under` in window coordinates, without the content's opening scale
+      var r = under.getBoundingClientRect(), c = root.clientWidth / 2, sc = 0.8 + 0.2 * contentS.x;
+      el.style.left = (c + (r.left + r.width / 2 - c) / sc) + 'px';
+    }
+    nbelow.appendChild(el);
+  }
+  // hover note of a badge (its .tt text): pure CSS above the taskbar, in the layer under the notch
+  function showTip(badge) {
+    var tt = badge && badge.querySelector('.tt');
+    if (!tt) { if (ntip) ntip.classList.remove('on'); return; }
+    if (!ntip) { ntip = document.createElement('div'); ntip.className = 'ntip'; popOut(ntip); }
+    ntip.textContent = tt.textContent;
+    ntip.classList.add('on');
+  }
+
   function setupNotch(n) {
     notch = n;
     var de = document.documentElement;
@@ -283,7 +312,8 @@
     nclip.appendChild(ncontent);
     nzone = document.createElement('div'); nzone.className = 'nzone hit';
     nzone.style.width = n.width + 'px'; nzone.style.height = Math.max(n.topPad, 6) + 'px';
-    root.appendChild(nshape); root.appendChild(nclip); root.appendChild(nzone);
+    nbelow = document.createElement('div'); nbelow.className = 'nbelow';
+    root.appendChild(nshape); root.appendChild(nclip); root.appendChild(nzone); root.appendChild(nbelow);
     draw();
     updateOpen();
     // the box changes size (stats, countdown, +1...): follow it while open
@@ -294,6 +324,7 @@
     var alert = !!(view && view.mode === 'alert');
     var open = alert || hovering || Date.now() < peekUntil ? 1 : 0;
     if (open === shapeS.to) return;
+    if (!open) showTip(null);
     shapeS.to = open; contentS.to = open;
     animate();
   }

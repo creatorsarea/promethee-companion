@@ -21,6 +21,10 @@ installation and usage.
   `lib/notch-mac.js`) to the content size with a damped spring (open: response 0.42 s, damping 0.8;
   close: 0.45 s, 1.0), the content scaling from 0.8 at the top and fading in, clipped by the same
   shape. The window itself never moves; outside the shape it is transparent and click-through.
+  Nothing is drawn above the notch's bottom edge, where the menu bar and the physical notch would
+  hide it: what rises over the box above the taskbar (the "!" note, the "+1", the "+XP" reward)
+  shows under the open shape instead and travels down, in a layer that starts at the shape's bottom
+  edge (`.nbelow` in `companion.css`); the window is taller to make room for it.
   `"notchWidth"` in `config.json` overrides the measured width.
 - **Tray icon**: show/hide, size (small/medium/large), reset position (bottom right),
   launch at startup, quit.
