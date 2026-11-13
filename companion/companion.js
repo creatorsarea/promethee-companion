@@ -203,6 +203,8 @@
   // ---- boot ----
   window.companion.init().then(function (cfg) {
     document.documentElement.style.setProperty('--m', cfg.size + 'px');
+    // macOS notch layout (see companion.css); "attached" = a notched display, the box extends the notch
+    if (cfg.notch) document.documentElement.classList.add('notch', ...(cfg.notch.attached ? ['notch-attached'] : []));
     if (cfg.fonts) {
       var st = document.createElement('style');
       st.textContent = "@font-face{font-family:'PromDisplay';src:url(" + cfg.fonts.display + ")}" +

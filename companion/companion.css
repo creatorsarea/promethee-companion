@@ -138,3 +138,17 @@ body{font-family:var(--b-font);color:var(--cream)}
 @keyframes boxgold{0%{box-shadow:0 8px 18px rgba(0,0,0,.45)}20%{box-shadow:0 0 0 2px #ffd04a,0 0 26px rgba(255,200,60,.7)}100%{box-shadow:0 8px 18px rgba(0,0,0,.45)}}
 
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+
+/* ---- macOS: top centre of the screen, under the menu bar / MacBook notch ----
+   The box hangs from the top in the middle (the window is centred on the notch), the mascot sits
+   small at its right. The window has a fixed place there: no drag, no docking line. */
+html.notch .mascot{width:calc(var(--m) * .42);height:calc(var(--m) * .42);right:calc(var(--m) * .08);top:calc(var(--m) * .05);bottom:auto}
+html.notch .front{left:0;right:0;top:0;bottom:auto;width:auto;height:auto}
+html.notch .fbox{top:6px;bottom:auto;max-width:calc(var(--m) * 1.2)}
+html.notch .hitbox{cursor:pointer}
+html.notch .fbox,html.notch #root.dragging .fbox{cursor:default}
+html.notch .chal{bottom:auto;top:100%;transform:translate(-50%,5px)}
+html.notch .plus1{bottom:auto;top:55%}
+/* notched display: black, flat top, rounded bottom, glued under the notch so they read as one */
+html.notch-attached .fbox{top:0;background:#000;border:0;border-radius:0 0 14px 14px;box-shadow:none}
+html.notch-attached .fbox.is-alert{background:#000;box-shadow:inset 0 -2px 0 rgba(255,77,46,.7)}
