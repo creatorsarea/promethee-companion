@@ -102,6 +102,8 @@ body.fonts #loadMsg{opacity:1;}
 .form>label:first-child{margin-top:0;}
 input,select,textarea{width:100%;background:var(--soot);border:1px solid var(--hair);border-radius:8px;color:var(--cream);padding:9px 11px;font-size:14px;font-family:inherit;}
 textarea{resize:vertical;min-height:96px;}
+.count{margin-top:4px;text-align:right;font-size:12px;color:var(--dim, #9a8f86);font-variant-numeric:tabular-nums;}
+.count.over{color:#ff6a4d;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ember);}
 .row{display:flex;gap:12px;}.row>div{flex:1;min-width:0;}
 .row label{margin-top:18px;}
@@ -202,7 +204,8 @@ a{color:var(--ember);word-break:break-all;}
           </div>
 
           <label for="body">Post text</label>
-          <textarea id="body" placeholder="Write the text of your session post…"></textarea>
+          <textarea id="body" maxlength="280" placeholder="Write the text of your session post…"></textarea>
+          <div class="count" id="bodyCount">0 / 280</div>
 
         </div>
 
