@@ -48,6 +48,13 @@ that off from the tray icon menu.
 
 ## macOS
 
+The companion out of the notch, on hover (left) and when you switch away (right):
+
+<p>
+  <img src="docs/img/macos-notch-stats.png" alt="Companion out of the notch with switch, penalty and focus" width="49%">
+  <img src="docs/img/macos-notch-alert.png" alt="Angry companion out of the notch with the Back to Orca countdown" width="49%">
+</p>
+
 - **In the notch**: the companion hides in the MacBook notch while you focus. When you switch away
   from your app, it springs out of the notch, angry, with the "Back to <app>" countdown, and goes
   back up when you return or when the switch is counted. It also peeks out briefly when a session
