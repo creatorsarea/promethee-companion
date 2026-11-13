@@ -32,6 +32,10 @@ const { Worker } = require('worker_threads');
 const { computeIdle, createSampler } = require('./lib/idle');
 const { computeView } = require('./lib/companion-view');
 const foreground = require('./lib/foreground');
+const macLoginItem = require('./lib/login-item-mac');
+const macNotch = require('./lib/notch-mac');
+
+const IS_MAC = process.platform === 'darwin';
 
 const APP_TITLE = 'Promethee Companion';
 app.setName('promethee-companion');
@@ -76,7 +80,10 @@ function openStudio() {
   });
   studioWin.setMenuBarVisibility(false);
   studioWin.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  studioWin.on('closed', () => { studioWin = null; });
+  studioWin.on('closed', () => { studioWin = null; if (IS_MAC && app.dock) app.dock.hide(); });
+  // macOS: the companion runs without a Dock icon (see boot); Card Studio is a normal window, so
+  // it gets one while it is open, to be found again with the Dock or Cmd-Tab.
+  if (IS_MAC && app.dock) app.dock.show().catch(() => {});
 }
 
 ipcMain.handle('studio:init', async () => {
@@ -229,9 +236,37 @@ const SIZES = { S: 130, M: 165, L: 200 };   // mascot size in px
 let compWin = null, tray = null, dragTimer = null;
 
 function compSize() { return SIZES[readConfig().companionSize] || SIZES.M; }
+// macOS: the companion lives in the MacBook notch (the macOS counterpart of "sitting on the
+// taskbar"). It stays hidden there while you focus and slides down, angry, when you leave your app
+// (the alert), or when you hover the notch. The bottom-right corner stays available from the menu.
+const notchMode = () => IS_MAC && readConfig().macPlacement !== 'corner';
+// The notch size comes from AppKit (lib/notch-mac.js). If that fails, a built-in display whose
+// menu bar (bounds minus work area) is 32 pt or more is taken as notched (37-38 pt there, 24-25 pt
+// elsewhere), with boringNotch's default width. With a notch, the window starts at the very top of
+// the screen and the shape grows out of the notch; without one, it starts under the menu bar and
+// grows out of its bottom edge. "notchWidth" in config.json overrides the width.
+const NOTCH_MENU_BAR_MIN = 32, NOTCH_DEFAULT_WIDTH = 185;
+let notchCache = null;
+function notchGeometry() {
+  const disp = screen.getPrimaryDisplay(), b = disp.bounds, wa = disp.workArea;
+  const key = [b.x, b.y, b.width, b.height, wa.y].join(',');
+  if (!notchCache || notchCache.key !== key) notchCache = { key, real: macNotch.measureNotch() };
+  const menuBar = Math.max(0, wa.y - b.y), real = notchCache.real;
+  const attached = real ? true : !!disp.internal && menuBar >= NOTCH_MENU_BAR_MIN;
+  const width = Number(readConfig().notchWidth) || (real ? real.width : NOTCH_DEFAULT_WIDTH);
+  return { disp, attached, top: attached ? b.y : wa.y, topPad: attached ? (real ? real.height : menuBar) : 0, width };
+}
 function compBounds(m) {
+  // notch: room for the open shape (mascot + box) under the notch, its spring overshoot and its
+  // shadow, plus room under it for hover notes and the "+XP" drop (companion.css, html.notch);
+  // the rest of the window is transparent and click-through
+  if (notchMode()) return { width: Math.round(m * 2.6), height: Math.round(notchGeometry().topPad + m * 1.15 + m * 0.75) };
   // mascot + headroom for the alert flames + room for the box in front of it
   return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
+}
+function notchPlacement(w) {
+  const g = notchGeometry(), b = g.disp.bounds;
+  return { x: b.x + Math.round((b.width - w) / 2), y: g.top };
 }
 // "Docked" height: like BongoCat, the box in front of the mascot sits ON the taskbar
 // (top of the stats box = top of the taskbar). The companion can be placed higher on
@@ -239,9 +274,14 @@ function compBounds(m) {
 const SNAP_PX = 28;
 let dockOffset = null;
 function getDockOffset() { return dockOffset != null ? dockOffset : (readConfig().dockOffset || Math.round(compSize() * 0.36)); }
+// macOS has no taskbar under the screen corner: the Dock can sit on any edge, be short, or hide
+// itself. The work area (visible frame) already excludes the menu bar and a visible Dock, so the
+// companion docks on its bottom edge, fully inside it. With an auto-hidden Dock that is the
+// bottom of the screen, and the Dock slides in under the companion (which stays on top).
 function dockY(disp, h) {
   const wa = disp.workArea, b = disp.bounds;
-  return Math.min(wa.y + wa.height - h + getDockOffset(), b.y + b.height - h);  // never below the screen
+  const dip = IS_MAC ? 0 : getDockOffset();
+  return Math.min(wa.y + wa.height - h + dip, b.y + b.height - h);  // never below the screen
 }
 function defaultPos(w, h) {
   const disp = screen.getPrimaryDisplay(), wa = disp.workArea;
@@ -261,7 +301,7 @@ function placeWindow(x, y, w, h) {
 function createCompanion() {
   const m = compSize(), { width, height } = compBounds(m);
   const cfg = readConfig();
-  const pos = cfg.companionPos ? placeWindow(cfg.companionPos.x, cfg.companionPos.docked !== false ? 1e6 : cfg.companionPos.y, width, height) : defaultPos(width, height);
+  const pos = notchMode() ? notchPlacement(width) : cfg.companionPos ? placeWindow(cfg.companionPos.x, cfg.companionPos.docked !== false ? 1e6 : cfg.companionPos.y, width, height) : defaultPos(width, height);
   compWin = new BrowserWindow({
     width, height, x: pos.x, y: pos.y,
     frame: false, transparent: true, resizable: false, maximizable: false, minimizable: false, fullscreenable: false,
@@ -269,9 +309,16 @@ function createCompanion() {
     // never takes the focus: Promethee must keep seeing your real app in the foreground
     focusable: false,
     backgroundColor: '#00000000', title: APP_TITLE,
+    // macOS: focusable:false alone still activates the app on click/drag (Promethee would then see
+    // Electron in the foreground). A non-activating panel never takes the focus, like Windows.
+    ...(IS_MAC ? { type: 'panel' } : {}),
+    // macOS pushes windows below the menu bar; the notch window must start at the top of the screen
+    ...(IS_MAC ? { enableLargerThanScreen: true } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload-companion.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
   });
   compWin.setAlwaysOnTop(true, 'screen-saver');
+  // macOS: follow the user across Spaces and over full-screen apps, like the Windows overlay
+  if (IS_MAC) compWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   compWin.setIgnoreMouseEvents(true, { forward: true });
   compWin.loadFile(path.join(__dirname, 'companion', 'index.html'));
   compWin.once('ready-to-show', () => { if (!readConfig().companionHidden) compWin.showInactive(); pushView(true); });
@@ -293,12 +340,15 @@ ipcMain.handle('companion:init', () => {
       sans: toDataURL(f('DMSans.ttf'), 'font/ttf'),
     };
   } catch {}
-  return { fonts, size: compSize() };
+  let notch = null;
+  if (notchMode()) { const g = notchGeometry(); notch = { attached: g.attached, topPad: g.topPad, width: g.width }; }
+  return { fonts, size: compSize(), notch };
 });
 ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMouseEvents(!over, { forward: true }); });
 ipcMain.on('companion:click', () => openStudio());
 // stats box height (renderer) -> docking line; re-dock if we are docked
 ipcMain.on('companion:boxH', (_e, h) => {
+  if (notchMode()) return;   // fixed place in the notch: no docking line
   h = Math.round(Number(h) || 0);
   if (h < 20 || h > 200 || h === getDockOffset()) return;
   dockOffset = h; patchConfig({ dockOffset: h });
@@ -309,7 +359,7 @@ ipcMain.on('companion:boxH', (_e, h) => {
   }
 });
 ipcMain.on('companion:dragStart', () => {
-  if (!compWin) return;
+  if (!compWin || notchMode()) return;   // the notch place is fixed
   const c = screen.getCursorScreenPoint(), b = compWin.getBounds();
   const off = { x: c.x - b.x, y: c.y - b.y }, size = compBounds(compSize());
   let last = '';
@@ -327,7 +377,7 @@ ipcMain.on('companion:dragStart', () => {
 });
 ipcMain.on('companion:dragEnd', () => {
   clearInterval(dragTimer); dragTimer = null;
-  if (compWin) {
+  if (compWin && !notchMode()) {
     const b = compWin.getBounds(), p = placeWindow(b.x, b.y, b.width, b.height);
     patchConfig({ companionPos: { x: b.x, y: b.y, docked: p.docked } });
   }
@@ -406,15 +456,28 @@ function trayIcon(size) {
   if (img.isEmpty()) return img;
   return img.crop({ x: 96, y: 98, width: 342, height: 352 }).resize({ width: size, height: size, quality: 'best' });
 }
+// macOS menu bar: an 18 pt template image (only its alpha is used), drawn by macOS in the menu
+// bar's color so it stays readable in light and dark mode, @2x for Retina screens.
+function menuBarIcon() {
+  const img = nativeImage.createFromBuffer(trayIcon(36).toPNG(), { scaleFactor: 2 });
+  img.setTemplateImage(true);
+  return img;
+}
 
 const loginArgs = () => (app.isPackaged ? [] : [app.getAppPath()]);
+// macOS from source: a LaunchAgent (see lib/login-item-mac.js); packaged builds and Windows:
+// the system login item.
+const macLaunchAgent = () => IS_MAC && !app.isPackaged;
 function setAutoLaunch(on) {
-  app.setLoginItemSettings({ openAtLogin: on, path: process.execPath, args: loginArgs() });
+  if (macLaunchAgent()) macLoginItem.setEnabled(on, [process.execPath, app.getAppPath()]);
+  else app.setLoginItemSettings({ openAtLogin: on, path: process.execPath, args: loginArgs() });
   patchConfig({ autoLaunch: on });
 }
 function isAutoLaunch() {
-  try { return app.getLoginItemSettings({ path: process.execPath, args: loginArgs() }).openAtLogin; }
-  catch { return !!readConfig().autoLaunch; }
+  try {
+    if (macLaunchAgent()) return macLoginItem.isEnabled();
+    return app.getLoginItemSettings({ path: process.execPath, args: loginArgs() }).openAtLogin;
+  } catch { return !!readConfig().autoLaunch; }
 }
 
 function buildTrayMenu() {
@@ -430,9 +493,13 @@ function buildTrayMenu() {
       label: l, type: 'radio', checked: size === k,
       click: () => { patchConfig({ companionSize: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
     })) },
-    { label: 'Reset position (bottom right)', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } },
+    ...(IS_MAC ? [{ label: 'Position', submenu: [['notch', 'In the notch (pops out on a switch)'], ['corner', 'Bottom right (always visible)']].map(([k, l]) => ({
+      label: l, type: 'radio', checked: (cfg.macPlacement === 'corner' ? 'corner' : 'notch') === k,
+      click: () => { patchConfig({ macPlacement: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
+    })) }] : []),
+    ...(notchMode() ? [] : [{ label: 'Reset position (bottom right)', click: () => { patchConfig({ companionPos: null }); rebuildCompanion(); } }]),
     { type: 'separator' },
-    { label: 'Launch at Windows startup', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
+    { label: IS_MAC ? 'Open at login' : 'Launch at Windows startup', type: 'checkbox', checked: isAutoLaunch(), click: i => setAutoLaunch(i.checked) },
     { type: 'separator' },
     { label: 'Quit', click: () => { app.isQuitting = true; app.quit(); } },
   ]));
@@ -448,18 +515,26 @@ function toggleCompanion(force) {
 
 // ---------------- boot ----------------
 function boot() {
+  // macOS: the companion is a menu bar utility. Without this, a Dock icon and a Cmd-Tab entry
+  // would stay for a window that never takes the focus. Card Studio brings the icon back while open.
+  if (IS_MAC && app.dock) app.dock.hide();
   sampler = createSampler(() => powerMonitor.getSystemIdleTime());
   foreground.start();
   createCompanion();
 
-  tray = new Tray(trayIcon(32));
+  tray = new Tray(IS_MAC ? menuBarIcon() : trayIcon(32));
   tray.setToolTip(APP_TITLE);
-  tray.on('click', () => toggleCompanion());
-  tray.on('double-click', openStudio);
+  // macOS opens the menu on click (the menu has Show/Hide and Open Card Studio)
+  if (!IS_MAC) {
+    tray.on('click', () => toggleCompanion());
+    tray.on('double-click', openStudio);
+  }
   buildTrayMenu();
 
   const cfg = readConfig();
-  if (cfg.autoLaunch === undefined) setAutoLaunch(true);   // first run: start with Windows
+  // first run: start with Windows. macOS: opt-in from the menu, login items there are expected to
+  // be the user's choice (and macOS announces each new one with a "Background item" notification).
+  if (cfg.autoLaunch === undefined && !IS_MAC) setAutoLaunch(true);
 
   pollDb().then(() => pushView(true));
   setInterval(pollDb, 2000);
@@ -468,7 +543,7 @@ function boot() {
   setInterval(() => pushView(false), 250);
   // keep it above the taskbar (Windows sometimes drops topmost after fullscreen apps)
   setInterval(() => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); }, 30000);
-  screen.on('display-metrics-changed', () => { if (!readConfig().companionPos) rebuildCompanion(); });
+  screen.on('display-metrics-changed', () => { if (notchMode() || !readConfig().companionPos) rebuildCompanion(); });
   powerMonitor.on('resume', () => { if (compWin && compWin.isVisible()) compWin.setAlwaysOnTop(true, 'screen-saver'); });
 }
 

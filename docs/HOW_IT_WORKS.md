@@ -11,7 +11,21 @@ installation and usage.
 | Focus | session running | waves once, box: switches, penalty, focus |
 | Alert | you left your app | flames, "Back to <app>" + countdown |
 
-- **Click**: opens Card Studio. **Drag**: moves the companion (position is remembered).
+- **Click**: opens Card Studio. **Drag**: moves the companion (position is remembered). On macOS
+  in the notch, the place is fixed and dragging does nothing.
+- **macOS notch**: hidden while idle or focused; springs out of the notch for the alert, on hover of
+  the notch, and for short peeks (session start/end, a switch counted, a challenge done). It looks
+  and moves like boringNotch: a black NotchShape (top corners curving into the menu bar, rounded
+  bottom corners; radii 6/14 closed, 19/24 open) drawn in SVG, going from the exact notch size
+  (read from AppKit's `auxiliaryTopLeftArea`/`auxiliaryTopRightArea` and `safeAreaInsets`,
+  `lib/notch-mac.js`) to the content size with a damped spring (open: response 0.42 s, damping 0.8;
+  close: 0.45 s, 1.0), the content scaling from 0.8 at the top and fading in, clipped by the same
+  shape. The window itself never moves; outside the shape it is transparent and click-through.
+  Nothing is drawn above the notch's bottom edge, where the menu bar and the physical notch would
+  hide it: what rises over the box above the taskbar (the "!" note, the "+1", the "+XP" reward)
+  shows under the open shape instead and travels down, in a layer that starts at the shape's bottom
+  edge (`.nbelow` in `companion.css`); the window is taller to make room for it.
+  `"notchWidth"` in `config.json` overrides the measured width.
 - **Tray icon**: show/hide, size (small/medium/large), reset position (bottom right),
   launch at startup, quit.
 - The window never takes focus, so Promethee keeps seeing your app.
@@ -36,8 +50,9 @@ sql.js in a separate thread, only when it changes):
 
 - **Data**: last sessions read from the local DB.
 - **Emblems / fonts**: read from `...\Local\Promethee\app-<latest version>\resources\assets\`.
-- **Token**: read and decrypted locally from `session.bin` (DPAPI + AES-GCM), never logged or
-  sent anywhere else. If it is expired, open Promethee and retry.
+- **Token**: read and decrypted locally from `session.bin` (Windows: DPAPI + AES-GCM; macOS:
+  Keychain + AES-CBC, see below), never logged or sent anywhere else. If it is expired, open
+  Promethee and retry.
 - **Publishing**: uploads the raw WebP (and its `.d.webp` display copy if the long edge exceeds
   1200 px), then calls `publish_feed_session`. "Publish hidden" goes through
   `publish_feed_session_v2` with the `only_me` audience, like the app does for a private post
@@ -119,3 +134,24 @@ The "companion" card shows a small taskbar. Its app icons are not shipped in thi
 them from the installed Promethee app (`resources/assets/app-icons`, plus `simple-icons/warp.svg` for Warp) and
 passes them to the scene as data URLs. If a file is missing (for example after a Promethee update that moves
 assets), the scene shows a neutral lettered placeholder instead. The "start" button is a generic dot grid.
+
+## Platforms
+
+The platform specific parts, and how each one is done:
+
+| Part | Windows | macOS |
+|---|---|---|
+| Data folder (`lib/paths.js`) | `%APPDATA%\Promethee` | `~/Library/Application Support/Promethee` (same files) |
+| App resources (`lib/paths.js`) | newest `%LOCALAPPDATA%\Promethee\app-x.y.z\resources` | `/Applications/Promethee.app/Contents/Resources` (or `~/Applications`), version from `CFBundleShortVersionString` |
+| Token key (`lib/token.js`) | `Local State` key unwrapped with DPAPI (PowerShell), AES-256-GCM | password of the Keychain item "Promethee Safe Storage" / "Promethee Key" (`security find-generic-password`), PBKDF2-SHA1 (salt `saltysalt`, 1003 rounds, 16 bytes), AES-128-CBC with an IV of 16 spaces (Chromium's `os_crypt`) |
+| Foreground app (`lib/foreground.js`) | PowerShell loop, `GetForegroundWindow` | `osascript -l JavaScript` loop, `NSWorkspace.frontmostApplication` (no permission; no window title) |
+| Place (`main.js`) | above the taskbar, bottom right, stats box on the taskbar | in the notch: the window starts at the top of a notched display (built-in display with a menu bar of 32 pt or more), under the menu bar otherwise, centred; the panel slides out on an alert; bottom right as an option |
+| Window | `focusable: false` | also `type: 'panel'` (non-activating, so clicking it does not make Electron the foreground app), visible on all Spaces and over full-screen apps |
+| Tray | notification area icon, click = show/hide | menu bar template icon, click = menu; no Dock icon except while Card Studio is open |
+| Start at login | `app.setLoginItemSettings`, on by default | a LaunchAgent when run from source (`lib/login-item-mac.js`, `setLoginItemSettings` would start bare Electron), off by default |
+
+Both platforms read the same DB: on macOS `window_events` has `bundle_id` and `exe_name` is the
+lowercased executable name (`orca`, `safari`), which is what the foreground reader reports too, so
+the "back to your app" alert compares the same values. Call detection (`lib/calls.js`) already
+covers the macOS app names (`zoom.us`, `Microsoft Teams`, `FaceTime`...). Idle time uses Electron's
+`powerMonitor`, which works on both.
