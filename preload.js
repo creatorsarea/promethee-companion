@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('studio', {
   openUpdate: () => ipcRenderer.invoke('studio:openUpdate'),
   live: () => ipcRenderer.invoke('studio:live'),
   sessions: () => ipcRenderer.invoke('studio:sessions'),
+  frDelta: opts => ipcRenderer.invoke('studio:frDelta', opts),
   stats: () => ipcRenderer.invoke('studio:stats'),
   compare: (mode, force) => ipcRenderer.invoke('studio:compare', { mode, force }),
   sceneBegin: (data) => ipcRenderer.invoke('studio:sceneBegin', data),

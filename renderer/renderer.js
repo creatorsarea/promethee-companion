@@ -76,6 +76,8 @@ function applySession(idx) {
   const latest = idx === 0 || (sessions[0].live && idx === 1);
   if (latest && frNow && frNow.rank != null) $('rank').value = frNow.rank;
   else if (!$('rank').dataset.touched) $('rank').value = current.rank ?? 1;
+  for (const id of ['tier', 'places', 'fr']) delete $(id).dataset.touched;
+  $('places').value = 0;
   if (current.live) $('fr').value = 0;
   else if (current.frGain != null) $('fr').value = current.frGain;
   $('streak').value = current.streak ?? profile.streak ?? 0;
@@ -97,7 +99,58 @@ function applySession(idx) {
     vis.value = lastAudience;
     ps.textContent = 'Not published yet. The button creates the post.';
   }
+  updateCount();
+  if (latest && !current.live) {
+    if (frAuto[current.sessionId]) applyFrAuto();
+    else if (Date.now() - (current.endedAt || 0) < 3600e3) pollFrDelta(current, 18);   // up to 3 min
+  }
   postScene('setup');
+}
+
+// ---- standing after the latest session (league, place, places climbed, FR earned) ----
+// Promethee rescores a little after a session ends, so right after the end we poll what the app
+// itself shows on its end screen, and fill the fields once it covers this session. Fields edited by
+// hand are left alone.
+const frAuto = {};
+let frPollTimer = null, frPollFor = null;
+function deltaApplies(r, s) {
+  const d = r.delta;
+  if (!d || d.score == null) return false;
+  // we saw the score before the session started: the delta covers it if the score moved since,
+  // or if the delta starts from that score
+  if (r.beforeScore != null) return Math.abs(d.score - r.beforeScore) >= 1 || (d.prevScore != null && Math.abs(d.prevScore - r.beforeScore) < 1);
+  // no earlier snapshot (companion started during the session): trust a recent, non-empty delta
+  return Date.now() - (s.endedAt || 0) < 3600e3 && d.scoreDelta != null && Math.abs(d.scoreDelta) >= 1;
+}
+async function pollFrDelta(s, tries) {
+  clearTimeout(frPollTimer); frPollFor = s.sessionId;
+  const r = await window.studio.frDelta({ startedAt: s.startedAt }).catch(() => null);
+  if (frPollFor !== s.sessionId) return;                    // another session was picked meanwhile
+  if (r && r.ok && deltaApplies(r, s)) {
+    const d = r.delta;
+    frAuto[s.sessionId] = { tier: d.tierTo, rank: d.rankTo, places: d.places ?? 0, fr: d.pointsEarned };
+    if (current && current.sessionId === s.sessionId) applyFrAuto();
+    return;
+  }
+  if (tries > 1) frPollTimer = setTimeout(() => pollFrDelta(s, tries - 1), 10000);
+}
+async function applyFrAuto() {
+  const a = current && frAuto[current.sessionId];
+  if (!a) return;
+  const sel = $('tier');
+  if (a.tier && !sel.dataset.touched && [...sel.options].some(o => o.value === a.tier) && sel.value !== a.tier) { sel.value = a.tier; await setTier(a.tier); }
+  if (a.rank != null && !$('rank').dataset.touched) $('rank').value = a.rank;
+  if (a.places != null && !$('places').dataset.touched) $('places').value = a.places;
+  if (a.fr != null && !$('fr').dataset.touched) $('fr').value = a.fr;
+  postScene('update');
+}
+
+// ---- post text: 280 characters max ----
+const BODY_MAX = 280;
+function updateCount() {
+  const n = $('body').value.length, el = $('bodyCount');
+  el.textContent = n + ' / ' + BODY_MAX;
+  el.classList.toggle('over', n > BODY_MAX);
 }
 
 let frNow = null;
@@ -285,8 +338,9 @@ async function init() {
     if (tkey === ((info.frNow && info.frNow.tier) || info.defaultTier)) o.selected = true; sel.appendChild(o);
   }
   await setTier(sel.value);
-  sel.addEventListener('change', async () => { await setTier(sel.value); postScene('update'); });
-  for (const id of ['handle', 'rank', 'streak', 'places', 'fr']) $(id).addEventListener('input', () => { if (id === 'rank') $('rank').dataset.touched = '1'; postScene('update'); });
+  sel.addEventListener('change', async () => { sel.dataset.touched = '1'; await setTier(sel.value); postScene('update'); });
+  for (const id of ['handle', 'rank', 'streak', 'places', 'fr']) $(id).addEventListener('input', () => { if (['rank', 'places', 'fr'].includes(id)) $(id).dataset.touched = '1'; postScene('update'); });
+  $('body').addEventListener('input', updateCount);
 
   applySession(0);
   setCardStyle(info.cardStyle);
@@ -390,6 +444,7 @@ async function companionFrames(st) {
 let publishing = false;
 async function publish() {
   if (current.live || publishing) return;
+  if ($('body').value.length > BODY_MAX) { $('status').textContent = `The post text is over ${BODY_MAX} characters.`; return; }
   publishing = true;
   const btn = $('publish'); btn.disabled = true;
   const st = $('status'); st.textContent = 'Generating frames…';

@@ -122,6 +122,22 @@ ipcMain.handle('studio:live', async () => {
     companion: { switches: sw, focus: Math.round(100 - penalty), penalty: Math.round(penalty), trackedSeconds: Math.round(tracked), idleSeconds: 0, bonusXp: null },
   };
 });
+// Standing after the latest session (league, place, places, FR earned), polled by Card Studio right
+// after a session ends: Promethee rescores a little after the end, not at the exact moment.
+// beforeScore = last score seen before the session started, so the renderer can tell whether the
+// delta already covers this session.
+ipcMain.handle('studio:frDelta', async (_e, opts) => {
+  try {
+    const startedAt = Number(opts && opts.startedAt) || 0;
+    const paths = resolve(); ensureAnon(paths);
+    const { token } = loadToken(paths);
+    const [st, delta] = await Promise.all([fr.fetchFrState(token).catch(() => null), fr.fetchRankDelta(token)]);
+    if (st) fr.record(FR_FILE, st);
+    // the start snapshot is taken a few seconds after the session starts (next DB read + request)
+    const before = [...fr.loadHistory(FR_FILE)].reverse().find(s => s.ts <= startedAt + 60e3 && s.score != null) || null;
+    return { ok: true, delta, beforeScore: before ? before.score : null };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
 // Same data as studio:init for the session list, refreshed after a session ends
 ipcMain.handle('studio:sessions', async () => {
   try {
@@ -359,6 +375,7 @@ function statStamp() {
 
 // Reading the DB is costly (it is big), so only re-read when the DB or its WAL changed,
 // or every 30s as a safety net.
+let lastLiveId = null;
 async function pollDb() {
   if (reading) return;
   reading = true;
@@ -367,6 +384,10 @@ async function pollDb() {
     const stamp = statStamp();
     if (stamp && stamp === dbStamp && Date.now() - dbReadAt < 30000) return;
     const st = await liveStatusAsync(paths);
+    // Focus Rate snapshot when a session starts: Card Studio compares it with the standing Promethee
+    // shows after the session, to know that standing already covers this session
+    if (st && st.active && st.sessionId && st.sessionId !== lastLiveId) snapFr();
+    lastLiveId = st && st.active ? st.sessionId : null;
     db = st; dbReadAt = Date.now(); dbStamp = stamp;
     sampler.follow(st);
   } catch (e) {
