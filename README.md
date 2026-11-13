@@ -5,7 +5,8 @@
 > [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 
 A small desktop companion for the Promethee focus app. It sits above your
-Windows taskbar (on macOS: under the menu bar, in the notch) and follows your session live, and it
+Windows taskbar (on macOS: hidden in the notch, popping out when you switch away) and follows your
+session live, and it
 includes **Card Studio**, where you can look at your stats and publish the end-of-session card to your
 Promethee feed.
 
@@ -47,9 +48,12 @@ that off from the tray icon menu.
 
 ## macOS
 
-- **Place**: the companion sits at the top centre of the screen, just under the menu bar. On a MacBook
-  with a notch, its box is black and glued under the notch. To put it in the bottom-right corner
-  instead, use **Position** in the menu bar icon's menu.
+- **In the notch**: the companion hides in the MacBook notch while you focus. When you switch away
+  from your app, it slides down out of the notch, angry, with the "Back to <app>" countdown, and goes
+  back up when you return or when the switch is counted. It also peeks out briefly when a session
+  starts or ends, and comes out when you hover the notch (click it to open Card Studio). Without a
+  notch it does the same from the middle of the menu bar's bottom edge. To keep it always visible in
+  the bottom-right corner instead, use **Position** in the menu bar icon's menu.
 - **Menu bar icon**: there is no Dock icon while only the companion runs. Click the menu bar icon for
   the menu. Card Studio gets a Dock icon while it is open.
 - **Keychain prompt**: the first time the companion reads your Promethee login, macOS asks whether

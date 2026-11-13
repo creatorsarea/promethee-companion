@@ -109,6 +109,7 @@
   function celebrate(id, xp) {
     if (celebrated[id]) return;
     celebrated[id] = true;
+    peek(2600);
     var c = document.getElementById('chal'); if (c) c.remove();
     var p = document.createElement('span'); p.className = 'xpwin'; p.textContent = '+' + xp + ' XP';
     flash.appendChild(p); setTimeout(function () { p.remove(); }, 2300);
@@ -128,6 +129,7 @@
 
   function showPlusOne() {
     lastPlusAt = Date.now();
+    peek(1800);
     var sw = document.getElementById('statSw'); if (!sw) return;
     var p = document.createElement('span'); p.className = 'plus1'; p.textContent = '+1';
     sw.appendChild(p); setTimeout(function () { p.remove(); }, 1700);
@@ -135,6 +137,7 @@
     setTimeout(function () { sw.classList.remove('hit1'); }, 1100);
   }
   function showOkFlash() {
+    peek(1000);
     var d = document.createElement('div'); d.className = 'okflash';
     d.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%"><path d="M22 52 L42 72 L80 30" fill="none" stroke="#0d2a14" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>' +
       '<path d="M22 52 L42 72 L80 30" fill="none" stroke="#4ade80" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -146,7 +149,9 @@
     if (v.stats) checkChallenges(v);
     view = v;
     if (v.mode !== state) {
-      var first = state === null; state = v.mode;
+      var first = state === null;
+      if (!first && (state === 'idle') !== (v.mode === 'idle') && !v.paused) peek(2500);   // session started / ended
+      state = v.mode;
       buildMascot(state);
       if (!first) { mascot.classList.add('pop'); setTimeout(function () { mascot.classList.remove('pop'); }, 360); }
     }
@@ -161,6 +166,7 @@
     if (v.mode !== 'alert' && v.stats && v.stats.challenge) { tickChallenge(); chalTimer = setInterval(tickChallenge, 500); }
     clearInterval(cdTimer); cdTimer = null;
     if (v.mode === 'alert' && v.alert) { tickCountdown(); cdTimer = setInterval(tickCountdown, 100); }
+    updateOpen();
   }
 
   // ---- mouse: click-through except over .hit; mascot and box = drag, button = open Card Studio ----
@@ -172,7 +178,7 @@
   }
   window.addEventListener('mousemove', function (e) {
     var hit = !!(e.target && e.target.closest && e.target.closest('.hit'));
-    if (hit !== over && !down) { over = hit; window.companion.hover(hit); }
+    if (hit !== over && !down) { over = hit; window.companion.hover(hit); setHover(hit); }
     if (down && !dragging && (Math.abs(e.screenX - down.x) > 3 || Math.abs(e.screenY - down.y) > 3)) { setDragging(true); window.companion.dragStart(); }
   });
   window.addEventListener('mousedown', function (e) {
@@ -198,13 +204,44 @@
     if (!(e.target.closest && e.target.closest('.hit')) || e.target.closest('.openbtn') || e.target.closest('.warnbadge')) return;
     openStudio();
   });
-  document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); } });
+  document.addEventListener('mouseleave', function () { if (!down && over) { over = false; window.companion.hover(false); setHover(false); } });
+
+  // ---- macOS notch: the panel hides in the notch and comes out on an alert, a hover or a peek ----
+  var notch = false, hovering = false, peekUntil = 0, peekTimer = null, leaveTimer = null;
+  function setupNotch(n) {
+    notch = true;
+    var de = document.documentElement;
+    de.classList.add('notch'); if (n.attached) de.classList.add('notch-attached');
+    de.style.setProperty('--top', (n.topPad || 0) + 'px');
+    var panel = document.createElement('div'); panel.className = 'npanel';
+    panel.appendChild(mascot); panel.appendChild(document.querySelector('.front'));
+    var zone = document.createElement('div'); zone.className = 'nzone hit';
+    root.appendChild(panel); root.appendChild(zone);
+    updateOpen();
+  }
+  function updateOpen() {
+    if (!notch) return;
+    var alert = !!(view && view.mode === 'alert');
+    root.classList.toggle('open', alert || hovering || Date.now() < peekUntil);
+  }
+  // short look out of the notch (session start / end, a switch counted, a challenge done)
+  function peek(ms) {
+    if (!notch) return;
+    peekUntil = Math.max(peekUntil, Date.now() + ms);
+    clearTimeout(peekTimer); peekTimer = setTimeout(updateOpen, peekUntil - Date.now() + 20);
+    updateOpen();
+  }
+  function setHover(on) {
+    if (!notch) return;
+    clearTimeout(leaveTimer);
+    if (on) { hovering = true; updateOpen(); }
+    else leaveTimer = setTimeout(function () { hovering = false; updateOpen(); }, 500);
+  }
 
   // ---- boot ----
   window.companion.init().then(function (cfg) {
     document.documentElement.style.setProperty('--m', cfg.size + 'px');
-    // macOS notch layout (see companion.css); "attached" = a notched display, the box extends the notch
-    if (cfg.notch) document.documentElement.classList.add('notch', ...(cfg.notch.attached ? ['notch-attached'] : []));
+    if (cfg.notch) setupNotch(cfg.notch);
     if (cfg.fonts) {
       var st = document.createElement('style');
       st.textContent = "@font-face{font-family:'PromDisplay';src:url(" + cfg.fonts.display + ")}" +

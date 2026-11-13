@@ -13,6 +13,10 @@ installation and usage.
 
 - **Click**: opens Card Studio. **Drag**: moves the companion (position is remembered). On macOS
   in the notch, the place is fixed and dragging does nothing.
+- **macOS notch**: hidden while idle or focused; slides out of the notch for the alert, on hover of
+  the notch, and for short peeks (session start/end, a switch counted, a challenge done). The
+  window never moves: a black panel inside a transparent, click-through window is moved with a CSS
+  transform (the part of the window outside the panel ignores the mouse).
 - **Tray icon**: show/hide, size (small/medium/large), reset position (bottom right),
   launch at startup, quit.
 - The window never takes focus, so Promethee keeps seeing your app.
@@ -132,7 +136,7 @@ The platform specific parts, and how each one is done:
 | App resources (`lib/paths.js`) | newest `%LOCALAPPDATA%\Promethee\app-x.y.z\resources` | `/Applications/Promethee.app/Contents/Resources` (or `~/Applications`), version from `CFBundleShortVersionString` |
 | Token key (`lib/token.js`) | `Local State` key unwrapped with DPAPI (PowerShell), AES-256-GCM | password of the Keychain item "Promethee Safe Storage" / "Promethee Key" (`security find-generic-password`), PBKDF2-SHA1 (salt `saltysalt`, 1003 rounds, 16 bytes), AES-128-CBC with an IV of 16 spaces (Chromium's `os_crypt`) |
 | Foreground app (`lib/foreground.js`) | PowerShell loop, `GetForegroundWindow` | `osascript -l JavaScript` loop, `NSWorkspace.frontmostApplication` (no permission; no window title) |
-| Place (`main.js`) | above the taskbar, bottom right, stats box on the taskbar | top centre under the menu bar; black and attached on a notched display (built-in display with a menu bar of 32 pt or more); bottom right as an option |
+| Place (`main.js`) | above the taskbar, bottom right, stats box on the taskbar | in the notch: the window starts at the top of a notched display (built-in display with a menu bar of 32 pt or more), under the menu bar otherwise, centred; the panel slides out on an alert; bottom right as an option |
 | Window | `focusable: false` | also `type: 'panel'` (non-activating, so clicking it does not make Electron the foreground app), visible on all Spaces and over full-screen apps |
 | Tray | notification area icon, click = show/hide | menu bar template icon, click = menu; no Dock icon except while Card Studio is open |
 | Start at login | `app.setLoginItemSettings`, on by default | a LaunchAgent when run from source (`lib/login-item-mac.js`, `setLoginItemSettings` would start bare Electron), off by default |

@@ -235,25 +235,30 @@ const SIZES = { S: 130, M: 165, L: 200 };   // mascot size in px
 let compWin = null, tray = null, dragTimer = null;
 
 function compSize() { return SIZES[readConfig().companionSize] || SIZES.M; }
-// macOS: the companion lives at the top centre of the screen, under the menu bar, where the
-// MacBook notch is (the macOS counterpart of "sitting on the taskbar"). The bottom-right corner
-// stays available from the tray menu.
+// macOS: the companion lives in the MacBook notch (the macOS counterpart of "sitting on the
+// taskbar"). It stays hidden there while you focus and slides down, angry, when you leave your app
+// (the alert), or when you hover the notch. The bottom-right corner stays available from the menu.
 const notchMode = () => IS_MAC && readConfig().macPlacement !== 'corner';
+// The menu bar height is the gap between the display bounds and its work area. Notched MacBook
+// displays have a ~37-38 pt menu bar (24-25 pt elsewhere). With a notch, the window starts at the
+// very top of the screen so the panel comes out of the notch (its top part stays behind it, black
+// on black); without one, it starts under the menu bar and comes out of its bottom edge.
+const NOTCH_MENU_BAR_MIN = 32;
+function notchGeometry() {
+  const disp = screen.getPrimaryDisplay(), b = disp.bounds, wa = disp.workArea;
+  const menuBar = Math.max(0, wa.y - b.y);
+  const attached = !!disp.internal && menuBar >= NOTCH_MENU_BAR_MIN;
+  return { disp, attached, top: attached ? b.y : wa.y, topPad: attached ? menuBar : 0 };
+}
 function compBounds(m) {
-  // notch: the box hangs in the middle, a small mascot sits at its right
-  if (notchMode()) return { width: Math.round(m * 2.4), height: Math.round(m * 0.8) };
+  // notch: room for the panel (mascot + box) under the notch; the rest is transparent and click-through
+  if (notchMode()) return { width: Math.round(m * 2.4), height: notchGeometry().topPad + Math.round(m * 1.05) };
   // mascot + headroom for the alert flames + room for the box in front of it
   return { width: Math.round(m * 1.6), height: Math.round(m * 1.5) };
 }
-// Top centre of the display that has the menu bar, just under it. The menu bar height is the
-// gap between the display bounds and its work area. Notched MacBook displays have a ~37-38 pt
-// menu bar (24-25 pt elsewhere): there the box is drawn attached, black, as if it were the notch
-// growing down. Other notch apps that draw inside the notch itself stay untouched.
-const NOTCH_MENU_BAR_MIN = 32;
 function notchPlacement(w) {
-  const disp = screen.getPrimaryDisplay(), b = disp.bounds, wa = disp.workArea;
-  const menuBar = wa.y - b.y;
-  return { x: b.x + Math.round((b.width - w) / 2), y: wa.y, attached: !!disp.internal && menuBar >= NOTCH_MENU_BAR_MIN };
+  const g = notchGeometry(), b = g.disp.bounds;
+  return { x: b.x + Math.round((b.width - w) / 2), y: g.top };
 }
 // "Docked" height: like BongoCat, the box in front of the mascot sits ON the taskbar
 // (top of the stats box = top of the taskbar). The companion can be placed higher on
@@ -326,7 +331,7 @@ ipcMain.handle('companion:init', () => {
     };
   } catch {}
   let notch = null;
-  if (notchMode()) notch = { attached: notchPlacement(compBounds(compSize()).width).attached };
+  if (notchMode()) { const g = notchGeometry(); notch = { attached: g.attached, topPad: g.topPad }; }
   return { fonts, size: compSize(), notch };
 });
 ipcMain.on('companion:hover', (_e, over) => { if (compWin) compWin.setIgnoreMouseEvents(!over, { forward: true }); });
@@ -478,7 +483,7 @@ function buildTrayMenu() {
       label: l, type: 'radio', checked: size === k,
       click: () => { patchConfig({ companionSize: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
     })) },
-    ...(IS_MAC ? [{ label: 'Position', submenu: [['notch', 'Top centre (notch)'], ['corner', 'Bottom right']].map(([k, l]) => ({
+    ...(IS_MAC ? [{ label: 'Position', submenu: [['notch', 'In the notch (pops out on a switch)'], ['corner', 'Bottom right (always visible)']].map(([k, l]) => ({
       label: l, type: 'radio', checked: (cfg.macPlacement === 'corner' ? 'corner' : 'notch') === k,
       click: () => { patchConfig({ macPlacement: k, companionPos: null }); rebuildCompanion(); buildTrayMenu(); },
     })) }] : []),
