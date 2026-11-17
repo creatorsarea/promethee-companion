@@ -15,6 +15,8 @@
   };
 
   const easeOut = x => { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); };
+  // XP counts up like the other numbers ("+15300" -> "+0" ... "+15300"); anything else is shown as is
+  const xpAt = (xp, k) => { const m = /^\s*\+?\s*(\d+)\s*$/.exec(String(xp ?? '')); return m ? '+' + Math.round(parseInt(m[1], 10) * k) : String(xp ?? ''); };
 
   function tx(ctx, x, y, s, font, fill, align, base, ls) {
     ctx.font = font; ctx.fillStyle = fill;
@@ -153,16 +155,21 @@
     tx(ctx, CX, HY + sz * 0.46, 'TOTAL SESSION', '32px DMMono', DIM, 'center', 'alphabetic', 10);
 
     // rank, big, centered above the rail
-    const rk = 'RANK #' + data.rank, frk = '44px DMMono', wrk = measure(ctx, rk, frk, 6);
+    const rkn = parseInt(data.rank, 10), climb = Math.max(0, parseInt(data.places, 10) || 0);
+    const rkNow = Number.isFinite(rkn) ? (climb > 0 ? Math.round(rkn + climb * (1 - k)) : rkn) : data.rank;
+    const rk = 'RANK #' + rkNow, frk = '44px DMMono';
+    const wrk = measure(ctx, 'RANK #' + (Number.isFinite(rkn) ? rkn + climb : data.rank), frk, 6);
+    ctx.save(); if (climb === 0) ctx.globalAlpha = k;
     roundRect(ctx, CX - wrk / 2 - 36, rail - 106, wrk + 72, 88, 44, 'rgba(255,255,255,.09)');
     tx(ctx, CX, rail - 62, rk, frk, CREAM, 'center', 'middle', 6);
+    ctx.restore();
 
     // rail
     ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(W - 90, rail); ctx.stroke();
     const frn = parseInt(data.fr, 10);
     const frTxt = Number.isFinite(frn) ? (frn >= 0 ? '+' : '') + Math.round(frn * k) : '—';
-    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' D'], ['XP', data.xp], ['FOCUS RATE', frTxt]];
+    const items = [['STREAK', Math.round((parseInt(data.streak, 10) || 0) * k) + ' D'], ['XP', xpAt(data.xp, k)], ['FOCUS RATE', frTxt]];
     const segw = (W - 180) / items.length;
     items.forEach((it, i) => {
       const xx = 90 + segw * i + 32;
@@ -248,7 +255,7 @@
     ctx.strokeStyle = 'rgba(255,255,255,.07)';
     ctx.beginPath(); ctx.moveTo(90, rail); ctx.lineTo(railRight, rail); ctx.stroke();
     const streakVal = Math.round((parseInt(data.streak, 10) || 0) * k) + ' D';
-    let items = [['STREAK', streakVal], ['XP', data.xp], ['SESSION', data.session]];
+    let items = [['STREAK', streakVal], ['XP', xpAt(data.xp, k)], ['SESSION', data.session]];
     if (Array.isArray(L.railItems)) items = items.filter(it => L.railItems.includes(it[0]));
     const segw = (railRight - 90) / items.length;
     items.forEach((it, i) => {
