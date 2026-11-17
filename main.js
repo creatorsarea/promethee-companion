@@ -132,10 +132,15 @@ ipcMain.handle('studio:frDelta', async (_e, opts) => {
     const paths = resolve(); ensureAnon(paths);
     const { token } = loadToken(paths);
     const [st, delta] = await Promise.all([fr.fetchFrState(token).catch(() => null), fr.fetchRankDelta(token)]);
+    // when Promethee last rescored (normally right after the session ended)
+    const updatedAt = (delta && delta.updatedAt) || (st && st.updatedAt) || null;
+    // FR earned = score now - last score we saw before that rescore (the companion snapshots it every
+    // 10 min and when a session starts), i.e. what the Promethee end screen shows
+    const hist = fr.loadHistory(FR_FILE);
+    const before = updatedAt ? [...hist].reverse().find(s => s.ts < updatedAt && s.score != null) || null : null;
     if (st) fr.record(FR_FILE, st);
-    // the start snapshot is taken a few seconds after the session starts (next DB read + request)
-    const before = [...fr.loadHistory(FR_FILE)].reverse().find(s => s.ts <= startedAt + 60e3 && s.score != null) || null;
-    return { ok: true, delta, beforeScore: before ? before.score : null };
+    const gain = st && st.score != null && before ? Math.max(0, Math.round(st.score - before.score)) : null;
+    return { ok: true, delta, updatedAt, score: st ? st.score : null, gain, sessionStart: startedAt };
   } catch (e) { return { ok: false, error: e.message }; }
 });
 // Same data as studio:init for the session list, refreshed after a session ends

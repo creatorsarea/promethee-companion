@@ -113,14 +113,9 @@ function applySession(idx) {
 // hand are left alone.
 const frAuto = {};
 let frPollTimer = null, frPollFor = null;
+// the standing covers this session once Promethee has rescored after the session started
 function deltaApplies(r, s) {
-  const d = r.delta;
-  if (!d || d.score == null) return false;
-  // we saw the score before the session started: the delta covers it if the score moved since,
-  // or if the delta starts from that score
-  if (r.beforeScore != null) return Math.abs(d.score - r.beforeScore) >= 1 || (d.prevScore != null && Math.abs(d.prevScore - r.beforeScore) < 1);
-  // no earlier snapshot (companion started during the session): trust a recent, non-empty delta
-  return Date.now() - (s.endedAt || 0) < 3600e3 && d.scoreDelta != null && Math.abs(d.scoreDelta) >= 1;
+  return !!(r.delta && r.updatedAt && r.updatedAt >= (s.startedAt || 0));
 }
 async function pollFrDelta(s, tries) {
   clearTimeout(frPollTimer); frPollFor = s.sessionId;
@@ -128,7 +123,7 @@ async function pollFrDelta(s, tries) {
   if (frPollFor !== s.sessionId) return;                    // another session was picked meanwhile
   if (r && r.ok && deltaApplies(r, s)) {
     const d = r.delta;
-    frAuto[s.sessionId] = { tier: d.tierTo, rank: d.rankTo, places: d.places ?? 0, fr: d.pointsEarned };
+    frAuto[s.sessionId] = { tier: d.tierTo, rank: d.rankTo, places: d.places ?? 0, fr: r.gain };
     if (current && current.sessionId === s.sessionId) applyFrAuto();
     return;
   }
