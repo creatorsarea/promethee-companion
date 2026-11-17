@@ -95,7 +95,8 @@ body{font-family:var(--b-font);color:var(--cream)}
 .fbox:hover .dwrap{cursor:pointer}
 .fbox:hover .dwrap .num,.fbox:hover .dwrap .lbl{color:transparent}
 .dwrap:hover .hoveropen{background:#ef7448}
-.dwrap .warnbadge{z-index:2}
+.fbox:hover .dwrap .warnbadge{visibility:hidden}   /* the Open app button covers the whole stats area */
+#root.dragging .dwrap .warnbadge{visibility:visible}
 #root.dragging .hoveropen{opacity:0}
 #root.dragging .dwrap .num.sw{color:var(--accent)}#root.dragging .dwrap .num.ml{color:var(--bad)}#root.dragging .dwrap .num.fc{color:var(--cream)}#root.dragging .dwrap .lbl{color:var(--mdim)}
 
